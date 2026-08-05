@@ -1,4 +1,4 @@
-import type { ParametrosDaTemporada } from "./types";
+import type { ParametrosDePremiacao } from "./types";
 
 /** Valor pago ao 1º e ao 2º colocados de uma Partida. Ver CONTEXT.md. */
 export interface PremiacaoDaPartida {
@@ -11,7 +11,7 @@ export interface PremiacaoDaPartida {
  * Parâmetros da Temporada.
  */
 export function calcularPremiacaoDaPartida(
-  parametros: ParametrosDaTemporada,
+  parametros: ParametrosDePremiacao,
 ): PremiacaoDaPartida {
   return {
     primeiro:
@@ -28,7 +28,7 @@ export function calcularPremiacaoDaPartida(
  */
 export function calcularEntradaNoCaixa(
   quantidadeDeParticipantes: number,
-  parametros: ParametrosDaTemporada,
+  parametros: ParametrosDePremiacao,
 ): number {
   const arrecadado = quantidadeDeParticipantes * parametros.valorDaPartida;
   const premiacao = calcularPremiacaoDaPartida(parametros);

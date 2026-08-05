@@ -3,11 +3,11 @@ import {
   calcularEntradaNoCaixa,
   calcularPremiacaoDaPartida,
 } from "./caixa";
-import type { ParametrosDaTemporada } from "./types";
+import type { ParametrosDePremiacao } from "./types";
 
 // Valores reais informados pelo Organizador: Valor da Partida R$10,
 // Premiação = 2x para o 1º e 1x para o 2º colocado.
-const parametrosReais: ParametrosDaTemporada = {
+const parametrosReais: ParametrosDePremiacao = {
   valorDaPartida: 10,
   multiplicadorPremiacaoPrimeiro: 2,
   multiplicadorPremiacaoSegundo: 1,

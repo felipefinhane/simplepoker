@@ -9,16 +9,37 @@ export interface LancamentoDoJogador extends LancamentoDeResultado {
   jogadorId: string;
 }
 
-/**
- * Parâmetros da Temporada (ver CONTEXT.md). Este ticket só precisa dos
- * campos usados pelo cálculo de Premiação da Partida e da entrada no
- * Caixa — Tabela de Pontos, Estrutura de Blinds e Fichas Iniciais entram
- * quando o ticket 05 persistir os Parâmetros completos; até lá, esta
- * interface cresce incrementalmente em vez de antecipar campos que ainda
- * não têm uso real.
- */
+import type { TabelaDePontos } from "./tabela-de-pontos";
+
+/** Um nível da Estrutura de Blinds. Ver CONTEXT.md. */
+export interface NivelDeBlind {
+  blindPequeno: number;
+  blindGrande: number;
+  duracaoMinutos: number;
+}
+
+/** Uma ficha (valor + quantidade) na composição das Fichas Iniciais. */
+export interface FichaInicial {
+  valor: number;
+  quantidade: number;
+}
+
+/** Parâmetros da Temporada, completos (ver CONTEXT.md). */
 export interface ParametrosDaTemporada {
+  tabelaDePontos: TabelaDePontos;
   valorDaPartida: number;
   multiplicadorPremiacaoPrimeiro: number;
   multiplicadorPremiacaoSegundo: number;
+  estruturaDeBlinds: NivelDeBlind[];
+  fichasIniciais: FichaInicial[];
 }
+
+/**
+ * Só os campos dos Parâmetros da Temporada usados pelo cálculo de
+ * Premiação da Partida e da entrada no Caixa — Tabela de Pontos, Estrutura
+ * de Blinds e Fichas Iniciais não entram nessas contas.
+ */
+export type ParametrosDePremiacao = Pick<
+  ParametrosDaTemporada,
+  "valorDaPartida" | "multiplicadorPremiacaoPrimeiro" | "multiplicadorPremiacaoSegundo"
+>;
