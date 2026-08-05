@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSession } from "./session";
 import { verificarSenha, hashSenha } from "./senha";
@@ -76,6 +77,27 @@ export async function requireOrganizador(): Promise<Organizador> {
   const organizador = await getOrganizadorLogado();
   if (!organizador) throw new NaoAutenticadoError();
   return organizador;
+}
+
+/**
+ * Mesma checagem de `requireOrganizador`, mas já pronta pra usar no topo
+ * de uma rota: se não houver sessão válida, devolve a resposta 401 pronta
+ * em vez de lançar — evita repetir o mesmo try/catch em cada rota.
+ *
+ * Uso: `const r = await requireOrganizadorOuResposta(); if (r instanceof
+ * NextResponse) return r;` — daí `r` é o Organizador.
+ */
+export async function requireOrganizadorOuResposta(): Promise<
+  Organizador | NextResponse
+> {
+  try {
+    return await requireOrganizador();
+  } catch (error) {
+    if (error instanceof NaoAutenticadoError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
+    throw error;
+  }
 }
 
 /**

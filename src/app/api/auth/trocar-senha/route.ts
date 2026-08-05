@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server";
-import {
-  NaoAutenticadoError,
-  requireOrganizador,
-  trocarSenha,
-} from "@/lib/auth/organizador";
+import { requireOrganizadorOuResposta, trocarSenha } from "@/lib/auth/organizador";
 
 export async function POST(request: Request) {
-  let organizador;
-  try {
-    organizador = await requireOrganizador();
-  } catch (error) {
-    if (error instanceof NaoAutenticadoError) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
-    }
-    throw error;
-  }
+  const organizadorOuResposta = await requireOrganizadorOuResposta();
+  if (organizadorOuResposta instanceof NextResponse) return organizadorOuResposta;
+  const organizador = organizadorOuResposta;
 
   const body = await request.json().catch(() => null);
   const senhaAtual =

@@ -5,7 +5,7 @@ Webapp para gerenciar o campeonato de poker semanal de um grupo de amigos: regis
 ## Language
 
 **Jogador**:
-Uma pessoa que participa do campeonato. Todo jogador aparece no ranking; nem todo jogador tem login no sistema (ver **Organizador**).
+Uma pessoa que participa do campeonato. Todo jogador aparece no ranking; nem todo jogador tem login no sistema (ver **Organizador**). Um Jogador pode ser desativado pelo Organizador — some das listas de participantes de novas Partidas, mas seu histórico (Partidas, Pontos, Almas já registrados) continua intacto. Um Organizador não pode ser desativado (a semântica de desativar quem tem login ainda não foi definida).
 _Avoid_: Participante, usuário (usuário é reservado para quem tem conta/login)
 
 **Organizador**:
