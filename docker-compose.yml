@@ -25,6 +25,8 @@ services:
     environment:
       DATABASE_URL: postgres://simplepoker:simplepoker@db:5432/simplepoker
       NODE_ENV: development
+      # Só para dev local — em produção, defina uma própria (32+ caracteres).
+      SESSION_SECRET: "dev-apenas-troque-em-producao-0057b8f2a9975acdf4c34e1fb1c5b830"
     volumes:
       - .:/app
       - node_modules:/app/node_modules
@@ -32,6 +34,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Aplica as migrations pendentes antes de subir o dev server, pra um
+    # `docker-compose up` sempre partir de um banco com o schema em dia.
+    command: sh -c "npm run migrate:up && npm run dev -- -H 0.0.0.0"
 
 volumes:
   db-data:

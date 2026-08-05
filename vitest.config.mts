@@ -9,5 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Testes de integração (precisam de Postgres) rodam à parte, via
+    // `npm run test:integration` — ver vitest.integration.config.mts.
+    exclude: ["**/node_modules/**", "test/integration/**"],
   },
 });
