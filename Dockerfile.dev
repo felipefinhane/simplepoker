@@ -1,0 +1,14 @@
+# Imagem de desenvolvimento local. O deploy em produção usa o build nativo
+# da Vercel a partir do repositório git — este Dockerfile não é usado lá.
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]

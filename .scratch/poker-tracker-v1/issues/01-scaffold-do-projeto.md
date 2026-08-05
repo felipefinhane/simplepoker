@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] App acessível publicamente por uma URL, sem custo de hospedagem
-- [ ] Conexão com o banco Postgres funcionando (health-check simples)
-- [ ] Manifest + service worker configurados; navegador oferece a opção de "instalar" o app no celular
-- [ ] `docker-compose up` sobe o app Next.js e um Postgres (imagem oficial `postgres`) em containers separados, com o app acessível localmente e já conectado ao banco
-- [ ] Documentado como rodar o projeto localmente via Docker e como fazer deploy
+- [ ] App acessível publicamente por uma URL, sem custo de hospedagem — **pendente**: requer o Organizador criar a conta na Vercel + banco gerenciado (Neon/Supabase) e conectar este repositório; não é algo que um agente consiga fazer sem essas credenciais. Passos documentados no README.
+- [x] Conexão com o banco Postgres funcionando (health-check simples) — `GET /api/health`
+- [x] Manifest + service worker configurados; navegador oferece a opção de "instalar" o app no celular
+- [x] `docker-compose up` sobe o app Next.js e um Postgres (imagem oficial `postgres`) em containers separados, com o app acessível localmente e já conectado ao banco
+- [x] Documentado como rodar o projeto localmente via Docker e como fazer deploy (README.md)
