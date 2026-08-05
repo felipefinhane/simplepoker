@@ -12,6 +12,13 @@ export const db =
   global.pgPool ??
   new Pool({
     connectionString: process.env.DATABASE_URL,
+    // Bancos gerenciados (ex: Neon) exigem SSL; o Postgres local do
+    // docker-compose não fala SSL. `rejectUnauthorized: false` evita falha
+    // por cadeia de certificado não reconhecida no runtime serverless.
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : undefined,
   });
 
 if (process.env.NODE_ENV !== "production") {
