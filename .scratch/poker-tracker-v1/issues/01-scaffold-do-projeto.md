@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [x] App acessível publicamente por uma URL, sem custo de hospedagem — https://simplepoker-xpxb.vercel.app/ (Vercel + Neon, ambos free tier)
+- [x] App acessível publicamente por uma URL, sem custo de hospedagem — https://simplepoker.vercel.app/ (Vercel + Neon, ambos free tier)
 - [x] Conexão com o banco Postgres funcionando (health-check simples) — `GET /api/health`
 - [x] Manifest + service worker configurados; navegador oferece a opção de "instalar" o app no celular
 - [x] `docker-compose up` sobe o app Next.js e um Postgres (imagem oficial `postgres`) em containers separados, com o app acessível localmente e já conectado ao banco
