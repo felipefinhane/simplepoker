@@ -43,6 +43,7 @@ Um webapp instalável (PWA) que substitui a planilha: qualquer pessoa acessa o R
 - **Stack**: Next.js (React) full-stack, um único projeto servindo API e frontend. PWA via web manifest + service worker, habilitando "instalar no celular".
 - **Banco de dados**: Postgres gerenciado em camada gratuita (Supabase ou Neon).
 - **Hospedagem**: camada gratuita (ex: Vercel).
+- **Ambiente local**: Docker Compose sobe o app Next.js e um Postgres em containers separados — quem for rodar o projeto localmente só precisa ter Docker instalado, sem Node.js nem Postgres na máquina. O Postgres local usa a imagem oficial `postgres`, compatível com o Postgres gerenciado usado em produção.
 - **Autenticação**: só existe para o papel Organizador (v1). Login = número de celular, senha inicial = 4 últimos dígitos do celular (hash armazenado, nunca em texto puro), com fluxo de troca de senha. Sessão simples via cookie — sem OAuth, sem SMS/OTP (evita custo). Jogadores comuns não autenticam nesta versão.
 - **Modelo de dados** (conceitual, ver `CONTEXT.md` para a definição de cada termo):
   - `Temporada`: período, status (aberta/encerrada), Parâmetros da Temporada embutidos (Tabela de Pontos, Valor da Partida, multiplicadores de Premiação da Partida, Estrutura de Blinds, Fichas Iniciais). Só uma Temporada pode estar aberta por vez — abrir uma nova exige encerrar a anterior.
