@@ -35,12 +35,10 @@ export function agregarResultadosPorJogador(
 }
 
 /**
- * Critério de desempate compartilhado pelos dois rankings: quando o
- * critério principal empata, cai para o secundário; se ainda empatar,
- * ordem alfabética do jogador garante um resultado determinístico.
- *
- * Não foi confirmado com o Organizador (a planilha real não tem empates) —
- * assumido como razoável até ser validado ou substituído.
+ * Critério de desempate compartilhado pelos dois rankings (confirmado com
+ * o Organizador): quando o critério principal empata, cai para o
+ * secundário; se ainda empatar, ordem alfabética do jogador garante um
+ * resultado determinístico. Ver CONTEXT.md.
  */
 function compararComDesempate(
   a: AgregadoDoJogador,

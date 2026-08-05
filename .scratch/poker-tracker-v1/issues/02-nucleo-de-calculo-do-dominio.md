@@ -7,8 +7,8 @@
 **Status:** ready-for-agent
 
 - [x] Pontos de uma Partida = pontos da Posição (via Tabela de Pontos) + 1 × Almas
-- [x] Ranking de Pontuação ordena Jogadores pela soma de Pontos na Temporada, com critério de desempate definido — **assumido, não confirmado com o Organizador**: empate em pontos desempata por mais Almas, e empate total cai para ordem alfabética. A planilha real não tem nenhum empate, então isso não pôde ser validado contra dado real; sinalizar para confirmação.
-- [x] Ranking Carrasco ordena Jogadores pela soma de Almas na Temporada, com critério de desempate definido — mesma ressalva acima, espelhado (desempata por mais Pontos, depois alfabético).
+- [x] Ranking de Pontuação ordena Jogadores pela soma de Pontos na Temporada, com critério de desempate definido — confirmado com o Organizador: empate em Pontos desempata por mais Almas, empate total cai para ordem alfabética (ver CONTEXT.md).
+- [x] Ranking Carrasco ordena Jogadores pela soma de Almas na Temporada, com critério de desempate definido — confirmado com o Organizador: empate em Almas desempata por mais Pontos, empate total cai para ordem alfabética (ver CONTEXT.md).
 - [x] Premiação da Partida calcula o valor pago ao 1º e 2º colocados como múltiplos do Valor da Partida
 - [x] Entrada automática no Caixa = (quantidade de participantes × Valor da Partida) − Premiação da Partida
 - [x] Testes de regressão usando os resultados reais já apurados em `POKER 1_2026.xlsx` como fixture, com o alcance explicitado (revisado via `/code-review`):

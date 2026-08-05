@@ -23,6 +23,9 @@ _Avoid_: Jogo, sessão
 **Posição**:
 O lugar em que um Jogador terminou uma Partida (1º, 2º, 3º...). Determina os Pontos daquele jogador na partida via a Tabela de Pontos.
 
+**Lançamento**:
+O registro de Posição e Almas que o Organizador lança para um Jogador numa Partida — é a partir dele que se calculam os Pontos daquele Jogador naquela Partida.
+
 **Alma**:
 Uma eliminação feita por um Jogador durante uma Partida — cada jogador que ele tirou do jogo conta como uma Alma. Cada Alma vale 1 ponto extra na pontuação da partida.
 _Avoid_: Eliminação, kill, bounty
@@ -43,10 +46,10 @@ Sequência de níveis (small/big blind + duração) usada no Timer da Partida, p
 Quantidade e composição de fichas com que cada Jogador começa uma Partida, parte dos Parâmetros da Temporada.
 
 **Ranking de Pontuação**:
-Classificação geral da Temporada, ordenando os Jogadores pela soma dos Pontos de todas as Partidas jogadas até o momento.
+Classificação geral da Temporada, ordenando os Jogadores pela soma dos Pontos de todas as Partidas jogadas até o momento. Empate em Pontos desempata por mais Almas; empate total cai para ordem alfabética do Jogador.
 
 **Ranking Carrasco**:
-Classificação paralela da Temporada, ordenando os Jogadores pela soma das Almas (eliminações) — não pela pontuação. Responde "quem mais eliminou gente".
+Classificação paralela da Temporada, ordenando os Jogadores pela soma das Almas (eliminações) — não pela pontuação. Responde "quem mais eliminou gente". Empate em Almas desempata por mais Pontos; empate total cai para ordem alfabética do Jogador.
 
 **Pagamento**:
 Registro por Jogador, por Partida, indicando se ele pagou o Valor da Partida naquela noite. É só um controle informativo (quem ainda deve) — não afeta o cálculo automático do Caixa, que assume sempre `QTDE × Valor da Partida`.

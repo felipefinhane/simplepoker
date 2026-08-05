@@ -1,13 +1,10 @@
-/**
- * O que o Organizador lança para um Jogador numa Partida: sua Posição final
- * e o número de Almas (eliminações). Ver CONTEXT.md.
- */
+/** Um Lançamento: Posição e Almas de um Jogador numa Partida. Ver CONTEXT.md. */
 export interface LancamentoDeResultado {
   posicao: number;
   almas: number;
 }
 
-/** Um Lancamento identificado por jogador, para agregação na Temporada. */
+/** Um Lançamento identificado por Jogador, para agregação na Temporada. */
 export interface LancamentoDoJogador extends LancamentoDeResultado {
   jogadorId: string;
 }
