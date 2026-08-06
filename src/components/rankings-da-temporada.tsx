@@ -15,6 +15,11 @@ function TabelaDeRanking({
   entradas: EntradaDeRanking[];
   destaque: "totalPontos" | "totalAlmas";
 }) {
+  // O Ranking Carrasco (destaque="totalAlmas") só mostra Almas — é um
+  // ranking à parte do de Pontuação, então a coluna de Pontos aqui só
+  // desviaria a atenção do que ele responde ("quem mais eliminou gente").
+  const mostrarPontos = destaque === "totalPontos";
+
   return (
     <div>
       <h2>{titulo}</h2>
@@ -27,7 +32,7 @@ function TabelaDeRanking({
               <tr>
                 <th style={{ textAlign: "left" }}>#</th>
                 <th style={{ textAlign: "left" }}>Jogador</th>
-                <th>Pontos</th>
+                {mostrarPontos && <th>Pontos</th>}
                 <th>Almas</th>
               </tr>
             </thead>
@@ -41,13 +46,11 @@ function TabelaDeRanking({
                 >
                   <td>{indice + 1}º</td>
                   <td>{entrada.nome}</td>
-                  <td style={{ textAlign: "center" }}>
-                    {destaque === "totalPontos" ? (
+                  {mostrarPontos && (
+                    <td style={{ textAlign: "center" }}>
                       <strong>{entrada.totalPontos}</strong>
-                    ) : (
-                      entrada.totalPontos
-                    )}
-                  </td>
+                    </td>
+                  )}
                   <td style={{ textAlign: "center" }}>
                     {destaque === "totalAlmas" ? (
                       <strong>{entrada.totalAlmas}</strong>
