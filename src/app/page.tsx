@@ -32,7 +32,8 @@ export default async function Home() {
         />
       )}
 
-      <p style={{ marginTop: "2rem" }}>
+      <p style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
+        <Link href="/caixa">Caixa</Link>
         <Link href="/historico">Temporadas anteriores</Link>
       </p>
     </main>
