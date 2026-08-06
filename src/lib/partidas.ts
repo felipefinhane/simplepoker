@@ -53,6 +53,20 @@ export interface AtualizacaoDeLancamento {
   pagamento?: boolean;
 }
 
+/**
+ * Se a Partida pode ser editada agora pelo Organizador logado — mesma regra
+ * checada (com trava contra corrida) em `travarPartidaEditavel`, aqui só
+ * pra decidir o que renderizar na UI (as páginas de Partida e do Timer em
+ * tela cheia usam a mesma checagem).
+ */
+export function partidaEstaEditavelPeloOrganizador(
+  partida: Pick<Partida, "finalizada">,
+  temporadaAberta: boolean,
+  organizadorLogado: boolean,
+): boolean {
+  return organizadorLogado && temporadaAberta && !partida.finalizada;
+}
+
 export class NenhumaTemporadaAbertaError extends Error {
   constructor() {
     super("Não há Temporada aberta para criar uma Partida.");

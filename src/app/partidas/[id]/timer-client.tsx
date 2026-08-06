@@ -1,36 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { EstadoDoTimer } from "@/lib/timer";
+import Link from "next/link";
+import { BotaoPlayPause } from "./botao-play-pause";
+import { MENSAGEM_SEM_ESTRUTURA_DE_BLINDS, formatarTempo, useTimer } from "./use-timer";
 
-const INTERVALO_DE_POLLING_MS = 3000;
-const DURACAO_DO_ALERTA_VISUAL_MS = 4000;
-
-/** Beep curto via Web Audio — sem depender de nenhum arquivo de áudio. */
-function tocarAlerta() {
-  try {
-    const AudioContextClasse =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    const contexto = new AudioContextClasse();
-    const oscilador = contexto.createOscillator();
-    oscilador.type = "sine";
-    oscilador.frequency.value = 880;
-    oscilador.connect(contexto.destination);
-    oscilador.start();
-    oscilador.stop(contexto.currentTime + 0.3);
-  } catch {
-    // Navegador sem suporte a Web Audio — segue sem som.
-  }
-}
-
-function formatarTempo(segundos: number): string {
-  const minutos = Math.floor(segundos / 60);
-  const resto = segundos % 60;
-  return `${minutos}:${resto.toString().padStart(2, "0")}`;
-}
-
+/**
+ * Card compacto do Timer, embutido na tela da Partida — controles rápidos
+ * (voltar/pausar-iniciar/pular nível) e um link pra tela cheia (`/timer`),
+ * onde ficam os controles menos usados (reiniciar/encerrar) e o mostrador
+ * grande pra deixar o celular apoiado na mesa.
+ */
 export function TimerClient({
   partidaId,
   podeControlar,
@@ -38,166 +17,83 @@ export function TimerClient({
   partidaId: number;
   podeControlar: boolean;
 }) {
-  const [estado, setEstado] = useState<EstadoDoTimer | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [nivelMudouAgora, setNivelMudouAgora] = useState(false);
-  const nivelAnteriorRef = useRef<number | null>(null);
-
-  function avisarMudancaDeNivel() {
-    tocarAlerta();
-    setNivelMudouAgora(true);
-    setTimeout(() => setNivelMudouAgora(false), DURACAO_DO_ALERTA_VISUAL_MS);
-  }
-
-  useEffect(() => {
-    let cancelado = false;
-
-    async function buscarEstado() {
-      const resposta = await fetch(`/api/partidas/${partidaId}/timer`);
-      if (!resposta.ok || cancelado) return;
-      const corpo: EstadoDoTimer = await resposta.json();
-
-      if (nivelAnteriorRef.current !== null && corpo.nivel !== nivelAnteriorRef.current) {
-        avisarMudancaDeNivel();
-      }
-      nivelAnteriorRef.current = corpo.nivel;
-      setEstado(corpo);
-    }
-
-    buscarEstado();
-    const intervalo = setInterval(buscarEstado, INTERVALO_DE_POLLING_MS);
-    return () => {
-      cancelado = true;
-      clearInterval(intervalo);
-    };
-  }, [partidaId]);
-
-  // Contagem local entre um poll e outro, pra não ficar "pulando" de 3 em
-  // 3 segundos — o próximo poll sempre corrige qualquer deriva.
-  useEffect(() => {
-    if (!estado?.rodando) return;
-    const intervalo = setInterval(() => {
-      setEstado((atual) =>
-        atual && atual.segundosRestantes > 0
-          ? { ...atual, segundosRestantes: atual.segundosRestantes - 1 }
-          : atual,
-      );
-    }, 1000);
-    return () => clearInterval(intervalo);
-  }, [estado?.rodando, estado?.nivel]);
-
-  async function executarAcao(caminho: string) {
-    setErro(null);
-    const resposta = await fetch(`/api/partidas/${partidaId}/timer/${caminho}`, {
-      method: "POST",
-    });
-    const corpo = await resposta.json().catch(() => null);
-
-    if (!resposta.ok) {
-      setErro(corpo?.error ?? "Não foi possível.");
-      return;
-    }
-    if (nivelAnteriorRef.current !== null && corpo.nivel !== nivelAnteriorRef.current) {
-      avisarMudancaDeNivel();
-    }
-    nivelAnteriorRef.current = corpo.nivel;
-    setEstado(corpo);
-  }
-
-  async function executarAcaoComConfirmacao(caminho: string, mensagem: string) {
-    if (!confirm(mensagem)) return;
-    await executarAcao(caminho);
-  }
+  const { estado, erro, nivelMudouAgora, executarAcao } = useTimer(partidaId);
 
   if (!estado) return null;
 
   if (!estado.nivelAtual) {
     return (
-      <p style={{ opacity: 0.7 }}>
-        Esta Temporada não tem Estrutura de Blinds configurada — o timer não
-        pode ser usado.
+      <p className="mb-section-margin text-body-md text-on-surface-variant">
+        {MENSAGEM_SEM_ESTRUTURA_DE_BLINDS}
       </p>
     );
   }
 
   return (
     <div
-      style={{
-        border: nivelMudouAgora ? "2px solid orange" : "1px solid #8888",
-        borderRadius: "8px",
-        padding: "1rem",
-        marginBottom: "1.5rem",
-        transition: "border-color 0.3s",
-      }}
+      className={`felt-glow relative mb-section-margin flex flex-col overflow-hidden rounded-xl border bg-primary-container p-6 text-center transition-colors ${
+        nivelMudouAgora ? "border-secondary" : "border-outline-variant/30"
+      }`}
     >
-      {nivelMudouAgora && (
-        <p style={{ color: "darkorange", fontWeight: "bold", margin: "0 0 0.5rem" }}>
-          ⚠️ Nível mudou!
-        </p>
-      )}
-      <p style={{ opacity: 0.7, margin: 0 }}>
-        Nível {estado.nivel + 1} de {estado.totalDeNiveis}
-      </p>
-      <p style={{ fontSize: "1.5rem", fontWeight: "bold", margin: "0.25rem 0" }}>
-        {estado.nivelAtual.blindPequeno} / {estado.nivelAtual.blindGrande}
-      </p>
-      <p style={{ fontSize: "2.5rem", margin: "0.25rem 0" }}>
-        {formatarTempo(estado.segundosRestantes)}
-      </p>
+      <div className="pointer-events-none absolute -right-4 -top-4 select-none text-9xl font-black text-on-primary opacity-10">
+        ♠
+      </div>
 
-      {erro && <p style={{ color: "crimson" }}>{erro}</p>}
+      <Link href={`/partidas/${partidaId}/timer`} className="z-10 flex flex-col items-center">
+        <div className="flex w-full items-center justify-between">
+          <span className="text-label-sm uppercase tracking-widest text-primary">
+            Nível {estado.nivel + 1} de {estado.totalDeNiveis}
+          </span>
+          <span className="material-symbols-outlined text-primary/70">open_in_full</span>
+        </div>
+
+        <h3 className="mb-1 text-body-lg text-on-primary">
+          Blinds{" "}
+          <span className="font-bold text-white">
+            {estado.nivelAtual.blindPequeno}/{estado.nivelAtual.blindGrande}
+          </span>
+        </h3>
+
+        <div className="my-4 text-display-score tabular-nums tracking-tighter text-white">
+          {formatarTempo(estado.segundosRestantes)}
+        </div>
+
+        {estado.proximoNivel && (
+          <div className="mb-2 text-label-data text-primary/80">
+            Próximo Nível: {estado.proximoNivel.blindPequeno}/{estado.proximoNivel.blindGrande}
+          </div>
+        )}
+      </Link>
+
+      {erro && <p className="z-10 mb-2 text-body-md text-error">{erro}</p>}
 
       {estado.encerrado ? (
-        <p style={{ opacity: 0.7 }}>Timer encerrado.</p>
+        <p className="z-10 mt-2 text-label-data text-primary/80">Timer encerrado.</p>
       ) : (
         podeControlar && (
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            {estado.rodando ? (
-              <button type="button" onClick={() => executarAcao("pausar")}>
-                Pausar
-              </button>
-            ) : (
-              <button type="button" onClick={() => executarAcao("iniciar")}>
-                {estado.segundosRestantes < estado.nivelAtual.duracaoMinutos * 60
-                  ? "Retomar"
-                  : "Iniciar"}
-              </button>
-            )}
+          <div className="z-10 mt-4 flex w-full items-center justify-center gap-8 rounded-full border border-white/5 bg-surface-container-low/50 p-4 backdrop-blur-sm">
             <button
               type="button"
               onClick={() => executarAcao("voltar-nivel")}
               disabled={estado.nivel === 0}
+              aria-label="Voltar nível"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-surface/40 text-on-surface transition-colors hover:bg-surface/80 disabled:opacity-30"
             >
-              Voltar nível
+              <span className="material-symbols-outlined">skip_previous</span>
             </button>
+            <BotaoPlayPause
+              rodando={estado.rodando}
+              tamanho="compacto"
+              onClick={() => executarAcao(estado.rodando ? "pausar" : "iniciar")}
+            />
             <button
               type="button"
               onClick={() => executarAcao("pular-nivel")}
               disabled={!estado.proximoNivel}
+              aria-label="Pular nível"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-surface/40 text-on-surface transition-colors hover:bg-surface/80 disabled:opacity-30"
             >
-              Pular nível
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                executarAcaoComConfirmacao(
-                  "reiniciar",
-                  "Reiniciar o Timer? Volta pro nível 1 com o tempo cheio.",
-                )
-              }
-            >
-              Reiniciar
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                executarAcaoComConfirmacao(
-                  "encerrar",
-                  "Encerrar o Timer? Depois disso não dá mais pra controlar.",
-                )
-              }
-            >
-              Encerrar
+              <span className="material-symbols-outlined">skip_next</span>
             </button>
           </div>
         )
