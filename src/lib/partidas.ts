@@ -33,6 +33,15 @@ export interface Partida {
   lancamentos: LancamentoDaPartida[];
 }
 
+/**
+ * Uma Partida está "lançada" quando todo participante tem Posição — como
+ * lançar resultado é atômico (ou lança todos, ou nenhum), isso nunca fica
+ * parcialmente verdadeiro.
+ */
+export function partidaEstaLancada(partida: Partida): boolean {
+  return partida.lancamentos.every((l) => l.posicao !== null);
+}
+
 export class NenhumaTemporadaAbertaError extends Error {
   constructor() {
     super("Não há Temporada aberta para criar uma Partida.");
@@ -181,6 +190,18 @@ export async function buscarPartidaPorId(id: number): Promise<Partida | null> {
 export async function listarPartidas(): Promise<Partida[]> {
   const { rows } = await db.query<{ id: number }>(
     `SELECT id FROM partidas ORDER BY data DESC, id DESC`,
+  );
+  const partidas = await Promise.all(rows.map((r) => buscarPartidaPorId(r.id)));
+  return partidas.filter((p): p is Partida => p !== null);
+}
+
+/** Partidas de uma Temporada específica, mais recentes primeiro. */
+export async function listarPartidasDaTemporada(
+  temporadaId: number,
+): Promise<Partida[]> {
+  const { rows } = await db.query<{ id: number }>(
+    `SELECT id FROM partidas WHERE temporada_id = $1 ORDER BY data DESC, id DESC`,
+    [temporadaId],
   );
   const partidas = await Promise.all(rows.map((r) => buscarPartidaPorId(r.id)));
   return partidas.filter((p): p is Partida => p !== null);

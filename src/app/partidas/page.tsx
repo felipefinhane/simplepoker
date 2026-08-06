@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getOrganizadorLogado } from "@/lib/auth/organizador";
-import { listarPartidas } from "@/lib/partidas";
+import { listarPartidas, partidaEstaLancada } from "@/lib/partidas";
 
 export default async function PartidasPage() {
   const organizador = await getOrganizadorLogado();
@@ -19,7 +19,7 @@ export default async function PartidasPage() {
       </p>
       <ul style={{ listStyle: "none", padding: 0 }}>
         {partidas.map((partida) => {
-          const lancada = partida.lancamentos.every((r) => r.posicao !== null);
+          const lancada = partidaEstaLancada(partida);
           return (
             <li key={partida.id} style={{ marginBottom: "0.5rem" }}>
               <Link href={`/partidas/${partida.id}`}>

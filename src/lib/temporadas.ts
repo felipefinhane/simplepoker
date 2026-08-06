@@ -32,8 +32,12 @@ function linhaParaTemporada(linha: LinhaTemporada): Temporada {
   return {
     id: linha.id,
     aberta: linha.aberta,
-    dataInicio: linha.data_inicio,
-    dataFim: linha.data_fim,
+    // O driver `pg` devolve colunas timestamptz como Date do JS, apesar
+    // do tipo declarado aqui ser string (mesma pegadinha do `date` em
+    // Partida — ver src/lib/partidas.ts) — convertendo pra ISO string na
+    // borda, uma vez só, em vez de em cada SELECT.
+    dataInicio: new Date(linha.data_inicio).toISOString(),
+    dataFim: linha.data_fim ? new Date(linha.data_fim).toISOString() : null,
     parametros: {
       tabelaDePontos: new Map(linha.tabela_de_pontos),
       valorDaPartida: Number(linha.valor_da_partida),
@@ -250,6 +254,14 @@ export async function buscarTemporadaPorId(id: number): Promise<Temporada | null
 export async function listarTemporadas(): Promise<Temporada[]> {
   const { rows } = await db.query<LinhaTemporada>(
     `SELECT * FROM temporadas ORDER BY id DESC`,
+  );
+  return rows.map(linhaParaTemporada);
+}
+
+/** Temporadas encerradas, mais recentes primeiro — a lista de `/historico`. */
+export async function listarTemporadasEncerradas(): Promise<Temporada[]> {
+  const { rows } = await db.query<LinhaTemporada>(
+    `SELECT * FROM temporadas WHERE aberta = false ORDER BY id DESC`,
   );
   return rows.map(linhaParaTemporada);
 }
