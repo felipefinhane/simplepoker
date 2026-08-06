@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getOrganizadorLogado } from "@/lib/auth/organizador";
 import { buscarPartidaPorId, partidaEstaEditavelPeloOrganizador } from "@/lib/partidas";
 import { buscarTemporadaPorId } from "@/lib/temporadas";
@@ -13,6 +13,11 @@ export default async function TimerTelaCheiaPage({
   const partida = await buscarPartidaPorId(Number(id));
   if (!partida) {
     notFound();
+  }
+
+  // Partida finalizada não precisa mais de Timer — o jogo já acabou.
+  if (partida.finalizada) {
+    redirect(`/partidas/${partida.id}`);
   }
 
   const organizador = await getOrganizadorLogado();

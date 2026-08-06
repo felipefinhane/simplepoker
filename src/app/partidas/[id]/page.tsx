@@ -108,7 +108,8 @@ export default async function PartidaPage({
         </div>
       </div>
 
-      <TimerClient partidaId={partida.id} podeControlar={podeEditar} />
+      {/* Partida finalizada não precisa mais de Timer — o jogo já acabou. */}
+      {!partida.finalizada && <TimerClient partidaId={partida.id} podeControlar={podeEditar} />}
 
       {podeEditar ? (
         <PartidaEmAndamentoClient
