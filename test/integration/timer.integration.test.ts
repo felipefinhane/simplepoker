@@ -4,13 +4,18 @@ import { criarJogador } from "@/lib/jogadores";
 import { TemporadaEncerradaError, criarTemporada, encerrarTemporada } from "@/lib/temporadas";
 import { criarPartida } from "@/lib/partidas";
 import {
+  PrimeiroNivelError,
   SemEstruturaDeBlindsError,
+  TimerEncerradoError,
   TimerNaoIniciadoError,
   UltimoNivelError,
   buscarEstadoDoTimer,
+  encerrarTimer,
   iniciarTimer,
   pausarTimer,
   pularNivel,
+  reiniciarTimer,
+  voltarNivel,
 } from "@/lib/timer";
 
 const ESTRUTURA_DE_BLINDS_DE_TESTE = [
@@ -153,15 +158,120 @@ describe("pularNivel (contra Postgres real)", () => {
   });
 });
 
+describe("voltarNivel (contra Postgres real)", () => {
+  it("volta pro nível anterior e zera o tempo decorrido", async () => {
+    const { partida } = await criarPartidaDeTeste();
+    await iniciarTimer(partida.id);
+    await pularNivel(partida.id); // nível 1
+    await espera(1100);
+
+    const estado = await voltarNivel(partida.id);
+
+    expect(estado.nivel).toBe(0);
+    expect(estado.nivelAtual).toEqual(ESTRUTURA_DE_BLINDS_DE_TESTE[0]);
+    expect(estado.rodando).toBe(true); // mantém rodando, já que estava rodando
+    expect(estado.segundosRestantes).toBeLessThanOrEqual(60);
+    expect(estado.segundosRestantes).toBeGreaterThan(55);
+  });
+
+  it("recusa voltar quando já está no primeiro nível", async () => {
+    const { partida } = await criarPartidaDeTeste();
+    await iniciarTimer(partida.id);
+
+    await expect(voltarNivel(partida.id)).rejects.toThrow(PrimeiroNivelError);
+  });
+
+  it("recusa voltar nível antes de o Timer ter sido iniciado", async () => {
+    const { partida } = await criarPartidaDeTeste();
+
+    await expect(voltarNivel(partida.id)).rejects.toThrow(TimerNaoIniciadoError);
+  });
+});
+
+describe("reiniciarTimer (contra Postgres real)", () => {
+  it("volta pro nível 0, parado, com o tempo cheio", async () => {
+    const { partida } = await criarPartidaDeTeste();
+    await iniciarTimer(partida.id);
+    await pularNivel(partida.id);
+    await espera(1100);
+
+    const estado = await reiniciarTimer(partida.id);
+
+    expect(estado.nivel).toBe(0);
+    expect(estado.rodando).toBe(false);
+    expect(estado.segundosRestantes).toBe(60);
+  });
+
+  it("funciona mesmo se o Timer nunca tiver sido iniciado", async () => {
+    const { partida } = await criarPartidaDeTeste();
+
+    const estado = await reiniciarTimer(partida.id);
+
+    expect(estado.nivel).toBe(0);
+    expect(estado.rodando).toBe(false);
+    expect(estado.segundosRestantes).toBe(60);
+  });
+
+  it("recusa sem Estrutura de Blinds configurada", async () => {
+    const { partida } = await criarPartidaDeTeste([]);
+
+    await expect(reiniciarTimer(partida.id)).rejects.toThrow(SemEstruturaDeBlindsError);
+  });
+});
+
+describe("encerrarTimer (contra Postgres real)", () => {
+  it("zera o Timer e trava todos os outros controles", async () => {
+    const { partida } = await criarPartidaDeTeste();
+    await iniciarTimer(partida.id);
+    await pularNivel(partida.id);
+
+    const estado = await encerrarTimer(partida.id);
+
+    expect(estado.encerrado).toBe(true);
+    expect(estado.nivel).toBe(0);
+    expect(estado.rodando).toBe(false);
+    expect(estado.segundosRestantes).toBe(60);
+
+    await expect(iniciarTimer(partida.id)).rejects.toThrow(TimerEncerradoError);
+    await expect(pausarTimer(partida.id)).rejects.toThrow(TimerEncerradoError);
+    await expect(pularNivel(partida.id)).rejects.toThrow(TimerEncerradoError);
+    await expect(voltarNivel(partida.id)).rejects.toThrow(TimerEncerradoError);
+    await expect(reiniciarTimer(partida.id)).rejects.toThrow(TimerEncerradoError);
+
+    // encerrar de novo é idempotente — continua encerrado, não é um erro.
+    await expect(encerrarTimer(partida.id)).resolves.toMatchObject({ encerrado: true });
+  });
+
+  it("funciona mesmo se o Timer nunca tiver sido iniciado", async () => {
+    const { partida } = await criarPartidaDeTeste();
+
+    const estado = await encerrarTimer(partida.id);
+
+    expect(estado.encerrado).toBe(true);
+  });
+
+  it("funciona mesmo sem Estrutura de Blinds configurada (diferente dos outros controles)", async () => {
+    const { partida } = await criarPartidaDeTeste([]);
+
+    const estado = await encerrarTimer(partida.id);
+
+    expect(estado.encerrado).toBe(true);
+  });
+});
+
 describe("controle do Timer numa Temporada encerrada (contra Postgres real)", () => {
-  it("recusa iniciar, pausar e pular nível", async () => {
+  it("recusa iniciar, pausar, pular/voltar nível, reiniciar e encerrar", async () => {
     const { temporada, partida } = await criarPartidaDeTeste();
     await iniciarTimer(partida.id);
+    await pularNivel(partida.id); // nível 1, pra poder testar voltarNivel também
     await encerrarTemporada(temporada.id);
 
     await expect(iniciarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
     await expect(pausarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
     await expect(pularNivel(partida.id)).rejects.toThrow(TemporadaEncerradaError);
+    await expect(voltarNivel(partida.id)).rejects.toThrow(TemporadaEncerradaError);
+    await expect(reiniciarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
+    await expect(encerrarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
   });
 
   it("corrida real entre pausar o Timer e encerrar a Temporada: nunca fica um estado gravado depois do encerramento", async () => {

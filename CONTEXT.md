@@ -47,6 +47,9 @@ Mapeamento de Posição → pontos, parte dos Parâmetros da Temporada (1º=25, 
 **Estrutura de Blinds**:
 Sequência de níveis (small/big blind + duração) usada no Timer da Partida, parte dos Parâmetros da Temporada — igual para toda Partida daquela Temporada.
 
+**Timer**:
+Cronômetro sincronizado dos níveis de blind de uma Partida (um por Partida), controlado pelo Organizador e visível por qualquer um. Roda ou está parado num nível da Estrutura de Blinds daquela Temporada. O Organizador pode iniciar/retomar, pausar, pular ou voltar de nível (livremente entre o primeiro e o último), reiniciar (zera pro primeiro nível com o tempo cheio, mas continua controlável) ou encerrar (zera e **trava**: nenhum desses controles funciona mais depois — sem volta, igual a finalizar uma Partida ou encerrar uma Temporada).
+
 **Fichas Iniciais**:
 Quantidade e composição de fichas com que cada Jogador começa uma Partida, parte dos Parâmetros da Temporada.
 

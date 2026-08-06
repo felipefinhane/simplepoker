@@ -104,6 +104,11 @@ export function TimerClient({
     setEstado(corpo);
   }
 
+  async function executarAcaoComConfirmacao(caminho: string, mensagem: string) {
+    if (!confirm(mensagem)) return;
+    await executarAcao(caminho);
+  }
+
   if (!estado) return null;
 
   if (!estado.nivelAtual) {
@@ -142,27 +147,60 @@ export function TimerClient({
 
       {erro && <p style={{ color: "crimson" }}>{erro}</p>}
 
-      {podeControlar && (
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          {estado.rodando ? (
-            <button type="button" onClick={() => executarAcao("pausar")}>
-              Pausar
+      {estado.encerrado ? (
+        <p style={{ opacity: 0.7 }}>Timer encerrado.</p>
+      ) : (
+        podeControlar && (
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {estado.rodando ? (
+              <button type="button" onClick={() => executarAcao("pausar")}>
+                Pausar
+              </button>
+            ) : (
+              <button type="button" onClick={() => executarAcao("iniciar")}>
+                {estado.segundosRestantes < estado.nivelAtual.duracaoMinutos * 60
+                  ? "Retomar"
+                  : "Iniciar"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => executarAcao("voltar-nivel")}
+              disabled={estado.nivel === 0}
+            >
+              Voltar nível
             </button>
-          ) : (
-            <button type="button" onClick={() => executarAcao("iniciar")}>
-              {estado.segundosRestantes < estado.nivelAtual.duracaoMinutos * 60
-                ? "Retomar"
-                : "Iniciar"}
+            <button
+              type="button"
+              onClick={() => executarAcao("pular-nivel")}
+              disabled={!estado.proximoNivel}
+            >
+              Pular nível
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => executarAcao("pular-nivel")}
-            disabled={!estado.proximoNivel}
-          >
-            Pular nível
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() =>
+                executarAcaoComConfirmacao(
+                  "reiniciar",
+                  "Reiniciar o Timer? Volta pro nível 1 com o tempo cheio.",
+                )
+              }
+            >
+              Reiniciar
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                executarAcaoComConfirmacao(
+                  "encerrar",
+                  "Encerrar o Timer? Depois disso não dá mais pra controlar.",
+                )
+              }
+            >
+              Encerrar
+            </button>
+          </div>
+        )
       )}
     </div>
   );
