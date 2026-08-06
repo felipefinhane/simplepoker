@@ -13,5 +13,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/integration/**/*.test.ts"],
+    // Os arquivos compartilham um Postgres real, e tabelas como
+    // `temporadas` têm uma regra global ("só uma aberta") que não é
+    // isolada por teste — rodar arquivos em paralelo cria corridas entre
+    // eles, não só dentro de um mesmo arquivo.
+    fileParallelism: false,
   },
 });
