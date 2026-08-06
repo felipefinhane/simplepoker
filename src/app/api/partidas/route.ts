@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOrganizadorOuResposta } from "@/lib/auth/organizador";
-import {
-  JogadorInvalidoError,
-  MinimoDeParticipantesError,
-  NenhumaTemporadaAbertaError,
-  criarPartida,
-  listarPartidas,
-} from "@/lib/partidas";
+import { criarPartida, listarPartidas, respostaDeErroDaPartida } from "@/lib/partidas";
 
 export async function GET() {
   const organizadorOuResposta = await requireOrganizadorOuResposta();
@@ -34,15 +28,8 @@ export async function POST(request: Request) {
     const partida = await criarPartida(data, jogadorIds);
     return NextResponse.json({ partida }, { status: 201 });
   } catch (error) {
-    if (
-      error instanceof MinimoDeParticipantesError ||
-      error instanceof JogadorInvalidoError
-    ) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    if (error instanceof NenhumaTemporadaAbertaError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
-    }
+    const resposta = respostaDeErroDaPartida(error);
+    if (resposta) return resposta;
     throw error;
   }
 }

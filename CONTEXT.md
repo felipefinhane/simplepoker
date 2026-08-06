@@ -17,17 +17,22 @@ Um campeonato semestral, formado por várias Partidas semanais, com pontuação 
 _Avoid_: Campeonato (usar Temporada para a unidade que se repete a cada semestre)
 
 **Partida**:
-Um encontro semanal do grupo, jogado numa mesa (ou mais, se necessário — o sistema não distingue mesas). Requer no mínimo 5 participantes para existir (validado pelo sistema). Gera, para cada Jogador participante: Posição final, número de Almas e Pagamento. Data e quantidade de participantes são atributos da Partida.
+Um encontro semanal do grupo, jogado numa mesa (ou mais, se necessário — o sistema não distingue mesas). Requer no mínimo 5 participantes para existir (validado pelo sistema). Gera, para cada Jogador participante: Posição final, Eliminador (de onde vem a Alma) e Pagamento. Data e quantidade de participantes são atributos da Partida.
+
+Uma Partida está **em andamento** desde que é criada: data e participantes continuam editáveis, e os Lançamentos podem ser preenchidos aos poucos, conforme os participantes vão saindo (ver Eliminou), sem precisar preencher todo mundo de uma vez. O Organizador a **finaliza** quando resta no máximo um participante sem Posição (o campeão, que vira 1º automaticamente) — finalizar calcula a Premiação da Partida e a entrada no Caixa, e trava a Partida contra novas edições (ela só entra no Ranking depois disso).
 _Avoid_: Jogo, sessão
 
 **Posição**:
 O lugar em que um Jogador terminou uma Partida (1º, 2º, 3º...). Determina os Pontos daquele jogador na partida via a Tabela de Pontos.
 
 **Lançamento**:
-O registro de Posição e Almas que o Organizador lança para um Jogador numa Partida — é a partir dele que se calculam os Pontos daquele Jogador naquela Partida.
+O registro de Posição e de quem Eliminou o Jogador (quando aplicável) que o Organizador lança para um Jogador numa Partida — é a partir dele que se derivam as Almas e os Pontos daquele Jogador naquela Partida.
+
+**Eliminou** (relação entre Jogadores num Lançamento):
+Cada Jogador que termina do 3º lugar pra baixo numa Partida foi eliminado por outro Jogador ainda ativo naquele momento — essa relação é registrada diretamente (quem eliminou quem), não como um número solto. O 1º e o 2º colocado não têm Eliminador: a Partida termina com os dois de pé, sem um confronto final. Se o Organizador não souber/lembrar quem eliminou alguém, o campo fica em branco — aquela Alma simplesmente não é contada pra ninguém.
 
 **Alma**:
-Uma eliminação feita por um Jogador durante uma Partida — cada jogador que ele tirou do jogo conta como uma Alma. Cada Alma vale 1 ponto extra na pontuação da partida.
+Cada Jogador começa uma Partida com 1 alma (a própria). Ao ser eliminado, entrega **só a própria alma** pra quem o Eliminou — qualquer alma que já tivesse coletado de outros Jogadores (por eliminações que ele mesmo fez antes de sair) fica com ele, contando nos pontos dele mesmo, mesmo já tendo saído da Partida. O 1º e o 2º colocado nunca são eliminados, então guardam a própria alma também. Na prática, sem precisar reconstruir cadeia nenhuma: **Almas de um Jogador numa Partida = quantos Jogadores ele eliminou nessa Partida + 1 se ele terminou em 1º ou 2º lugar**. Cada Alma vale 1 ponto extra na pontuação da partida (ver Pontos).
 _Avoid_: Eliminação, kill, bounty
 
 **Pontos (da Partida)**:

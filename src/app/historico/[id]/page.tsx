@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buscarTemporadaPorId } from "@/lib/temporadas";
-import { listarPartidasDaTemporada, partidaEstaLancada } from "@/lib/partidas";
+import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
 import { RankingsDaTemporada } from "@/components/rankings-da-temporada";
 
@@ -21,7 +21,7 @@ export default async function TemporadaHistoricaPage({
 
   const rankings = await calcularRankingsDaTemporada(temporada.id);
   const partidas = (await listarPartidasDaTemporada(temporada.id)).filter(
-    partidaEstaLancada,
+    (p) => p.finalizada,
   );
 
   return (

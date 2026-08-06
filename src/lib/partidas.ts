@@ -1,4 +1,7 @@
+import { NextResponse } from "next/server";
+import type { PoolClient } from "pg";
 import { db, withTransaction } from "@/lib/db";
+import { calcularAlmas } from "@/domain/alma";
 import { calcularPontosDoLancamento } from "@/domain/pontos";
 import {
   calcularEntradaNoCaixa,
@@ -15,14 +18,23 @@ import { listarJogadoresAtivos } from "@/lib/jogadores";
 /** Ver CONTEXT.md — Partida exige no mínimo 5 participantes. */
 export const MINIMO_DE_PARTICIPANTES = 5;
 
-/** Um Lançamento de um Jogador numa Partida, já com Pontos derivados. Ver CONTEXT.md. */
+/**
+ * Um Lançamento de um Jogador numa Partida, já com Almas e Pontos
+ * derivados. Ver CONTEXT.md.
+ */
 export interface LancamentoDaPartida {
   jogadorId: number;
   nome: string;
   posicao: number | null;
-  almas: number;
+  eliminadoPorJogadorId: number | null;
+  eliminadoPorNome: string | null;
   pagamento: boolean;
-  /** Derivado (posicao + almas); null enquanto o Lançamento não foi feito. */
+  /**
+   * Derivado: quantos Jogadores este eliminou nesta Partida, + 1 se
+   * terminou em 1º ou 2º lugar (guardou a própria alma). Ver CONTEXT.md.
+   */
+  almas: number;
+  /** Derivado (Posição + Almas); null enquanto ele ainda está ativo. */
   pontos: number | null;
 }
 
@@ -30,16 +42,15 @@ export interface Partida {
   id: number;
   temporadaId: number;
   data: string;
+  finalizada: boolean;
   lancamentos: LancamentoDaPartida[];
 }
 
-/**
- * Uma Partida está "lançada" quando todo participante tem Posição — como
- * lançar resultado é atômico (ou lança todos, ou nenhum), isso nunca fica
- * parcialmente verdadeiro.
- */
-export function partidaEstaLancada(partida: Partida): boolean {
-  return partida.lancamentos.every((l) => l.posicao !== null);
+/** O que pode ser alterado num Lançamento existente — ver `atualizarLancamento`. */
+export interface AtualizacaoDeLancamento {
+  posicao?: number | null;
+  eliminadoPorJogadorId?: number | null;
+  pagamento?: boolean;
 }
 
 export class NenhumaTemporadaAbertaError extends Error {
@@ -65,17 +76,34 @@ export class JogadorInvalidoError extends Error {
   }
 }
 
-export class LancamentosInvalidosError extends Error {
+/** Dados inválidos para uma edição da Partida (data, participante ou Lançamento). */
+export class DadosDaPartidaInvalidosError extends Error {
   constructor(mensagem: string) {
     super(mensagem);
-    this.name = "LancamentosInvalidosError";
+    this.name = "DadosDaPartidaInvalidosError";
+  }
+}
+
+export class PartidaFinalizadaError extends Error {
+  constructor() {
+    super("Esta Partida já foi finalizada e não pode mais ser alterada.");
+    this.name = "PartidaFinalizadaError";
+  }
+}
+
+export class ResultadosIncompletosError extends Error {
+  constructor(quantosFaltam: number) {
+    super(
+      `Ainda falta o resultado de ${quantosFaltam} participante(s) — só é possível finalizar quando no máximo um estiver sem posição (o campeão).`,
+    );
+    this.name = "ResultadosIncompletosError";
   }
 }
 
 /**
  * Cria uma Partida vinculada à Temporada aberta, com um Lançamento vazio
- * (sem posicao/almas/pagamento) por participante — "vazio" é o estado
- * "convocado, ainda não lançado".
+ * (sem posicao/eliminador/pagamento) por participante — "vazio" é o
+ * estado "convocado, ainda não saiu".
  */
 export async function criarPartida(
   data: string,
@@ -94,11 +122,7 @@ export async function criarPartida(
   const temporada = await buscarTemporadaAberta();
   if (!temporada) throw new NenhumaTemporadaAbertaError();
 
-  const ativos = await listarJogadoresAtivos();
-  const idsAtivos = new Set(ativos.map((j) => j.id));
-  for (const jogadorId of jogadorIds) {
-    if (!idsAtivos.has(jogadorId)) throw new JogadorInvalidoError(jogadorId);
-  }
+  await validarJogadoresAtivos(jogadorIds);
 
   const partidaId = await withTransaction(async (client) => {
     const { rows } = await client.query<{ id: number }>(
@@ -121,12 +145,22 @@ export async function criarPartida(
   return (await buscarPartidaPorId(partidaId))!;
 }
 
+async function validarJogadoresAtivos(jogadorIds: number[]): Promise<void> {
+  const ativos = await listarJogadoresAtivos();
+  const idsAtivos = new Set(ativos.map((j) => j.id));
+  for (const jogadorId of jogadorIds) {
+    if (!idsAtivos.has(jogadorId)) throw new JogadorInvalidoError(jogadorId);
+  }
+}
+
 interface LinhaLancamento {
   jogador_id: number;
   nome: string;
   posicao: number | null;
-  almas: number;
+  eliminado_por_jogador_id: number | null;
+  eliminado_por_nome: string | null;
   pagamento: boolean;
+  quantidade_eliminados: number;
 }
 
 export async function buscarPartidaPorId(id: number): Promise<Partida | null> {
@@ -136,8 +170,10 @@ export async function buscarPartidaPorId(id: number): Promise<Partida | null> {
     id: number;
     temporada_id: number;
     data: string;
+    finalizada: boolean;
   }>(
-    `SELECT id, temporada_id, to_char(data, 'YYYY-MM-DD') AS data FROM partidas WHERE id = $1`,
+    `SELECT id, temporada_id, to_char(data, 'YYYY-MM-DD') AS data, finalizada
+     FROM partidas WHERE id = $1`,
     [id],
   );
 
@@ -149,33 +185,51 @@ export async function buscarPartidaPorId(id: number): Promise<Partida | null> {
   const tabelaDePontos = temporada!.parametros.tabelaDePontos;
 
   const { rows: lancamentoRows } = await db.query<LinhaLancamento>(
-    `SELECT l.jogador_id, j.nome, l.posicao, l.almas, l.pagamento
+    `SELECT
+       l.jogador_id,
+       j.nome,
+       l.posicao,
+       l.eliminado_por_jogador_id,
+       eliminador.nome AS eliminado_por_nome,
+       l.pagamento,
+       COALESCE(elims.qtd, 0)::integer AS quantidade_eliminados
      FROM lancamentos l
      JOIN jogadores j ON j.id = l.jogador_id
+     LEFT JOIN jogadores eliminador ON eliminador.id = l.eliminado_por_jogador_id
+     LEFT JOIN (
+       SELECT eliminado_por_jogador_id, COUNT(*)::integer AS qtd
+       FROM lancamentos
+       WHERE partida_id = $1 AND eliminado_por_jogador_id IS NOT NULL
+       GROUP BY eliminado_por_jogador_id
+     ) elims ON elims.eliminado_por_jogador_id = l.jogador_id
      WHERE l.partida_id = $1
      ORDER BY j.nome`,
     [id],
   );
 
-  const lancamentos: LancamentoDaPartida[] = lancamentoRows.map((linha) => ({
-    jogadorId: linha.jogador_id,
-    nome: linha.nome,
-    posicao: linha.posicao,
-    almas: linha.almas,
-    pagamento: linha.pagamento,
-    pontos:
-      linha.posicao === null
-        ? null
-        : calcularPontosDoLancamento(
-            { posicao: linha.posicao, almas: linha.almas },
-            tabelaDePontos,
-          ),
-  }));
+  const lancamentos: LancamentoDaPartida[] = lancamentoRows.map((linha) => {
+    const almas = calcularAlmas(linha.quantidade_eliminados, linha.posicao);
+
+    return {
+      jogadorId: linha.jogador_id,
+      nome: linha.nome,
+      posicao: linha.posicao,
+      eliminadoPorJogadorId: linha.eliminado_por_jogador_id,
+      eliminadoPorNome: linha.eliminado_por_nome,
+      pagamento: linha.pagamento,
+      almas,
+      pontos:
+        linha.posicao === null
+          ? null
+          : calcularPontosDoLancamento({ posicao: linha.posicao, almas }, tabelaDePontos),
+    };
+  });
 
   return {
     id: partidaRow.id,
     temporadaId: partidaRow.temporada_id,
     data: partidaRow.data,
+    finalizada: partidaRow.finalizada,
     lancamentos,
   };
 }
@@ -207,98 +261,313 @@ export async function listarPartidasDaTemporada(
   return partidas.filter((p): p is Partida => p !== null);
 }
 
-export interface EntradaDeLancamento {
+interface LancamentoTravado {
   jogadorId: number;
-  posicao: number;
-  almas: number;
+  posicao: number | null;
+  eliminadoPorJogadorId: number | null;
   pagamento: boolean;
 }
 
-export interface ResultadoLancado {
+/**
+ * Trava a Partida e a Temporada (`FOR UPDATE`, mesmo padrão usado em
+ * `encerrarTemporada`/`lancarSaidaManual`/`timer.ts`) dentro de uma
+ * transação, e garante que a Partida ainda pode ser editada agora — sem
+ * isso, duas edições concorrentes da mesma Partida (ou uma edição
+ * correndo junto com `finalizarPartida`/`encerrarTemporada`) poderiam ler
+ * um estado desatualizado e pisar uma na outra. Retorna os Lançamentos já
+ * sob a trava, pra quem chamou decidir o que fazer com eles.
+ */
+async function travarPartidaEditavel(
+  client: PoolClient,
+  partidaId: number,
+): Promise<{ temporadaId: number; lancamentos: LancamentoTravado[] }> {
+  const { rows: partidaRows } = await client.query<{
+    temporada_id: number;
+    finalizada: boolean;
+  }>(`SELECT temporada_id, finalizada FROM partidas WHERE id = $1 FOR UPDATE`, [partidaId]);
+
+  const partidaRow = partidaRows[0];
+  if (!partidaRow) throw new Error(`Partida ${partidaId} não encontrada.`);
+  if (partidaRow.finalizada) throw new PartidaFinalizadaError();
+
+  const { rows: temporadaRows } = await client.query<{ aberta: boolean }>(
+    `SELECT aberta FROM temporadas WHERE id = $1 FOR UPDATE`,
+    [partidaRow.temporada_id],
+  );
+  if (!temporadaRows[0]?.aberta) throw new TemporadaEncerradaError();
+
+  const { rows: lancamentoRows } = await client.query<{
+    jogador_id: number;
+    posicao: number | null;
+    eliminado_por_jogador_id: number | null;
+    pagamento: boolean;
+  }>(
+    `SELECT jogador_id, posicao, eliminado_por_jogador_id, pagamento
+     FROM lancamentos WHERE partida_id = $1 FOR UPDATE`,
+    [partidaId],
+  );
+
+  return {
+    temporadaId: partidaRow.temporada_id,
+    lancamentos: lancamentoRows.map((r) => ({
+      jogadorId: r.jogador_id,
+      posicao: r.posicao,
+      eliminadoPorJogadorId: r.eliminado_por_jogador_id,
+      pagamento: r.pagamento,
+    })),
+  };
+}
+
+/** Edita a data de uma Partida ainda não finalizada. */
+export async function editarDataDaPartida(
+  partidaId: number,
+  novaData: string,
+): Promise<Partida> {
+  if (!novaData) {
+    throw new DadosDaPartidaInvalidosError("Informe a data da Partida.");
+  }
+
+  await withTransaction(async (client) => {
+    await travarPartidaEditavel(client, partidaId);
+    await client.query(`UPDATE partidas SET data = $2 WHERE id = $1`, [partidaId, novaData]);
+  });
+
+  return (await buscarPartidaPorId(partidaId))!;
+}
+
+/** Adiciona um Jogador ativo como participante de uma Partida ainda não finalizada. */
+export async function adicionarParticipante(
+  partidaId: number,
+  jogadorId: number,
+): Promise<Partida> {
+  await validarJogadoresAtivos([jogadorId]);
+
+  await withTransaction(async (client) => {
+    const { lancamentos } = await travarPartidaEditavel(client, partidaId);
+
+    if (lancamentos.some((l) => l.jogadorId === jogadorId)) {
+      throw new DadosDaPartidaInvalidosError("Este Jogador já é participante desta Partida.");
+    }
+
+    await client.query(
+      `INSERT INTO lancamentos (partida_id, jogador_id) VALUES ($1, $2)`,
+      [partidaId, jogadorId],
+    );
+  });
+
+  return (await buscarPartidaPorId(partidaId))!;
+}
+
+function validarEliminador(
+  lancamentos: { jogadorId: number; posicao: number | null }[],
+  jogadorId: number,
+  eliminadoPorJogadorId: number | null,
+  { exigirEliminadorAtivo }: { exigirEliminadorAtivo: boolean },
+): void {
+  if (eliminadoPorJogadorId === null) return;
+
+  if (eliminadoPorJogadorId === jogadorId) {
+    throw new DadosDaPartidaInvalidosError("Um Jogador não pode eliminar a si mesmo.");
+  }
+
+  const eliminador = lancamentos.find((l) => l.jogadorId === eliminadoPorJogadorId);
+  if (!eliminador) {
+    throw new DadosDaPartidaInvalidosError("O eliminador precisa ser um participante desta Partida.");
+  }
+  if (exigirEliminadorAtivo && eliminador.posicao !== null) {
+    throw new DadosDaPartidaInvalidosError(
+      "O eliminador precisa ser um participante ainda ativo (sem posição definida).",
+    );
+  }
+}
+
+/**
+ * A posição livre pra quem sai agora, contando do maior número pro menor
+ * — a mesma regra de "quantos ainda estão ativos" de antes, só que
+ * calculada como "maior posição de 1..N ainda não usada" em vez de "total
+ * menos quantos já têm posição". Dá no mesmo enquanto as posições forem
+ * preenchidas só por `marcarSaida`, mas evita colidir com uma posição que
+ * o Organizador já tenha atribuído manualmente fora de ordem (via
+ * `atualizarLancamento`, no fluxo "lançar tudo no final").
+ */
+function proximaPosicaoLivre(lancamentos: { posicao: number | null }[]): number {
+  const total = lancamentos.length;
+  const ocupadas = new Set(
+    lancamentos.map((l) => l.posicao).filter((p): p is number => p !== null),
+  );
+  for (let posicao = total; posicao >= 1; posicao--) {
+    if (!ocupadas.has(posicao)) return posicao;
+  }
+  // Não deveria acontecer: só chegamos aqui quando o próprio chamador já
+  // confirmou que o jogador que está saindo ainda não tem posição.
+  throw new Error("Não há posição livre para atribuir.");
+}
+
+/**
+ * Atualiza Posição, Eliminador e/ou Pagamento de um participante — usado
+ * pelo fluxo de "lançar tudo no final" (ou pra corrigir um valor a
+ * qualquer momento antes de finalizar). Ver `marcarSaida` para o fluxo
+ * incremental ("fulano saiu agora").
+ */
+export async function atualizarLancamento(
+  partidaId: number,
+  jogadorId: number,
+  dados: AtualizacaoDeLancamento,
+): Promise<Partida> {
+  await withTransaction(async (client) => {
+    const { lancamentos } = await travarPartidaEditavel(client, partidaId);
+
+    const lancamento = lancamentos.find((l) => l.jogadorId === jogadorId);
+    if (!lancamento) {
+      throw new DadosDaPartidaInvalidosError("Jogador não é participante desta Partida.");
+    }
+
+    const posicao = dados.posicao !== undefined ? dados.posicao : lancamento.posicao;
+    const eliminadoPorJogadorId =
+      dados.eliminadoPorJogadorId !== undefined
+        ? dados.eliminadoPorJogadorId
+        : lancamento.eliminadoPorJogadorId;
+    const pagamento = dados.pagamento !== undefined ? dados.pagamento : lancamento.pagamento;
+
+    if (posicao !== null) {
+      if (!Number.isInteger(posicao) || posicao < 1) {
+        throw new DadosDaPartidaInvalidosError(`Posição inválida para o jogador ${jogadorId}.`);
+      }
+      const jaOcupada = lancamentos.some(
+        (l) => l.jogadorId !== jogadorId && l.posicao === posicao,
+      );
+      if (jaOcupada) {
+        throw new DadosDaPartidaInvalidosError(`Posição ${posicao} já está ocupada por outro participante.`);
+      }
+    }
+
+    validarEliminador(lancamentos, jogadorId, eliminadoPorJogadorId, { exigirEliminadorAtivo: false });
+
+    await client.query(
+      `UPDATE lancamentos
+       SET posicao = $3, eliminado_por_jogador_id = $4, pagamento = $5
+       WHERE partida_id = $1 AND jogador_id = $2`,
+      [partidaId, jogadorId, posicao, eliminadoPorJogadorId, pagamento],
+    );
+  });
+
+  return (await buscarPartidaPorId(partidaId))!;
+}
+
+/**
+ * "Fulano saiu agora": atribui a posição automaticamente (contando os
+ * participantes ainda ativos, do maior pro menor) e registra quem
+ * eliminou. O eliminador precisa ser outro participante ainda ativo.
+ */
+export async function marcarSaida(
+  partidaId: number,
+  jogadorId: number,
+  eliminadoPorJogadorId: number | null,
+): Promise<Partida> {
+  await withTransaction(async (client) => {
+    const { lancamentos } = await travarPartidaEditavel(client, partidaId);
+
+    const lancamento = lancamentos.find((l) => l.jogadorId === jogadorId);
+    if (!lancamento) {
+      throw new DadosDaPartidaInvalidosError("Jogador não é participante desta Partida.");
+    }
+    if (lancamento.posicao !== null) {
+      throw new DadosDaPartidaInvalidosError("Este participante já tem uma posição registrada.");
+    }
+
+    validarEliminador(lancamentos, jogadorId, eliminadoPorJogadorId, { exigirEliminadorAtivo: true });
+
+    const posicao = proximaPosicaoLivre(lancamentos);
+
+    await client.query(
+      `UPDATE lancamentos
+       SET posicao = $3, eliminado_por_jogador_id = $4
+       WHERE partida_id = $1 AND jogador_id = $2`,
+      [partidaId, jogadorId, posicao, eliminadoPorJogadorId],
+    );
+  });
+
+  return (await buscarPartidaPorId(partidaId))!;
+}
+
+export interface PartidaFinalizada {
   partida: Partida;
   premiacao: PremiacaoDaPartida;
   entradaNoCaixa: number;
 }
 
 /**
- * Lança (ou reedita) o resultado completo de uma Partida — todos os
- * participantes de uma vez, nunca parcial. Recalcula Pontos, Premiação da
- * Partida e a entrada automática no Caixa (que substitui a anterior, se
- * já existia — ver índice único em caixa_transacoes).
+ * Finaliza a Partida: se sobrar exatamente um participante sem posição,
+ * vira o 1º lugar automaticamente (guardou a própria alma até o fim).
+ * Calcula a Premiação da Partida e gera a entrada automática no Caixa
+ * (substitui uma anterior, se essa Partida já tinha sido finalizada e
+ * reaberta — não deveria acontecer hoje, mas o UPSERT é seguro de
+ * qualquer forma). Trava a Partida contra novas edições.
  */
-export async function lancarResultado(
-  partidaId: number,
-  entradas: EntradaDeLancamento[],
-): Promise<ResultadoLancado | null> {
-  const partida = await buscarPartidaPorId(partidaId);
-  if (!partida) return null;
-
-  const temporada = await buscarTemporadaPorId(partida.temporadaId);
-  if (!temporada) return null; // não deveria acontecer (FK)
-
-  const idsEsperados = new Set(partida.lancamentos.map((l) => l.jogadorId));
-  const idsRecebidos = new Set(entradas.map((e) => e.jogadorId));
-  const mesmoConjunto =
-    idsEsperados.size === idsRecebidos.size &&
-    [...idsEsperados].every((id) => idsRecebidos.has(id));
-  if (!mesmoConjunto) {
-    throw new LancamentosInvalidosError(
-      "É preciso informar o resultado de todos (e só) os participantes da Partida.",
-    );
-  }
-
-  for (const entrada of entradas) {
-    if (!Number.isInteger(entrada.posicao) || entrada.posicao < 1) {
-      throw new LancamentosInvalidosError(
-        `Posição inválida para o jogador ${entrada.jogadorId}.`,
-      );
-    }
-    if (!Number.isInteger(entrada.almas) || entrada.almas < 0) {
-      throw new LancamentosInvalidosError(
-        `Número de almas inválido para o jogador ${entrada.jogadorId}.`,
-      );
-    }
-  }
-
-  const premiacao = calcularPremiacaoDaPartida(temporada.parametros);
-  const entradaNoCaixa = calcularEntradaNoCaixa(
-    entradas.length,
-    temporada.parametros,
-  );
+export async function finalizarPartida(partidaId: number): Promise<PartidaFinalizada> {
+  let temporadaId!: number;
+  let premiacao!: PremiacaoDaPartida;
+  let entradaNoCaixa!: number;
 
   await withTransaction(async (client) => {
-    // `FOR UPDATE` trava a linha da Temporada até o fim da transação: se
-    // `encerrarTemporada` estiver rodando ao mesmo tempo, uma das duas
-    // espera a outra terminar — sem isso, checar "está aberta?" e gravar
-    // o lançamento são dois passos separados que uma corrida poderia
-    // intercalar, deixando um lançamento gravado numa Temporada que acabou
-    // de ser encerrada (a mesma classe de corrida corrigida no ticket 05
-    // para "duas Temporadas abertas").
-    const { rows } = await client.query<{ aberta: boolean }>(
-      `SELECT aberta FROM temporadas WHERE id = $1 FOR UPDATE`,
-      [temporada.id],
-    );
-    if (!rows[0]?.aberta) throw new TemporadaEncerradaError();
+    const travado = await travarPartidaEditavel(client, partidaId);
+    temporadaId = travado.temporadaId;
 
-    for (const entrada of entradas) {
+    const semPosicao = travado.lancamentos.filter((l) => l.posicao === null);
+    if (semPosicao.length > 1) {
+      throw new ResultadosIncompletosError(semPosicao.length);
+    }
+
+    if (semPosicao.length === 1) {
       await client.query(
-        `UPDATE lancamentos
-         SET posicao = $3, almas = $4, pagamento = $5
-         WHERE partida_id = $1 AND jogador_id = $2`,
-        [partidaId, entrada.jogadorId, entrada.posicao, entrada.almas, entrada.pagamento],
+        `UPDATE lancamentos SET posicao = 1 WHERE partida_id = $1 AND jogador_id = $2`,
+        [partidaId, semPosicao[0].jogadorId],
       );
     }
+
+    await client.query(`UPDATE partidas SET finalizada = true WHERE id = $1`, [partidaId]);
+
+    // Parâmetros da Temporada são congelados na criação (ver CONTEXT.md)
+    // — ler fora da trava desta transação é seguro, não mudam durante ela.
+    const temporada = (await buscarTemporadaPorId(temporadaId))!;
+    premiacao = calcularPremiacaoDaPartida(temporada.parametros);
+    entradaNoCaixa = calcularEntradaNoCaixa(travado.lancamentos.length, temporada.parametros);
 
     await client.query(
       `INSERT INTO caixa_transacoes (temporada_id, tipo, valor, partida_id)
        VALUES ($1, 'entrada_partida', $2, $3)
        ON CONFLICT (partida_id) WHERE tipo = 'entrada_partida'
        DO UPDATE SET valor = EXCLUDED.valor`,
-      [temporada.id, entradaNoCaixa, partidaId],
+      [temporadaId, entradaNoCaixa, partidaId],
     );
   });
 
-  const partidaAtualizada = (await buscarPartidaPorId(partidaId))!;
+  const partida = (await buscarPartidaPorId(partidaId))!;
 
-  return { partida: partidaAtualizada, premiacao, entradaNoCaixa };
+  return { partida, premiacao, entradaNoCaixa };
+}
+
+/**
+ * Converte os erros de domínio da Partida numa resposta HTTP — usada
+ * pelas rotas de criar/editar/finalizar, que só diferem na função
+ * chamada. Retorna null se o erro não for um dos esperados (a rota deve
+ * relançar nesse caso).
+ */
+export function respostaDeErroDaPartida(error: unknown): NextResponse | null {
+  if (
+    error instanceof MinimoDeParticipantesError ||
+    error instanceof JogadorInvalidoError ||
+    error instanceof DadosDaPartidaInvalidosError
+  ) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  if (
+    error instanceof NenhumaTemporadaAbertaError ||
+    error instanceof TemporadaEncerradaError ||
+    error instanceof PartidaFinalizadaError ||
+    error instanceof ResultadosIncompletosError
+  ) {
+    return NextResponse.json({ error: error.message }, { status: 409 });
+  }
+  return null;
 }

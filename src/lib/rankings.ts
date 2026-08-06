@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { calcularAlmas } from "@/domain/alma";
 import {
   agregarResultadosPorJogador,
   calcularRankingCarrasco,
@@ -22,9 +23,13 @@ export interface RankingsDaTemporada {
 
 /**
  * Ranking de Pontuação e Ranking Carrasco de uma Temporada, a partir dos
- * Lançamentos de todas as suas Partidas já lançadas (`posicao IS NOT
- * NULL` — Partidas pendentes não contam, e como lançar é atômico, uma
- * Partida nunca fica "meio lançada").
+ * Lançamentos de todas as suas Partidas **finalizadas** (uma Partida em
+ * andamento pode ter posições parciais — só conta pro ranking depois de
+ * finalizada).
+ *
+ * Almas é derivado por Lançamento via `calcularAlmas` (ver CONTEXT.md) a
+ * partir de quantos Jogadores cada um eliminou nessa Partida (conta de
+ * `eliminado_por_jogador_id` apontando pra ele).
  *
  * O núcleo de cálculo (ticket 02, `AgregadoDoJogador.jogadorId`) agrega
  * por uma string qualquer — aqui usamos o **id numérico do Jogador**
@@ -49,13 +54,25 @@ export async function calcularRankingsDaTemporada(
     jogador_id: number;
     nome: string;
     posicao: number;
-    almas: number;
+    quantidade_eliminados: number;
   }>(
-    `SELECT l.jogador_id, j.nome, l.posicao, l.almas
+    `SELECT
+       l.jogador_id,
+       j.nome,
+       l.posicao,
+       COALESCE(elims.qtd, 0)::integer AS quantidade_eliminados
      FROM lancamentos l
      JOIN partidas p ON p.id = l.partida_id
      JOIN jogadores j ON j.id = l.jogador_id
-     WHERE p.temporada_id = $1 AND l.posicao IS NOT NULL`,
+     LEFT JOIN (
+       SELECT partida_id, eliminado_por_jogador_id, COUNT(*)::integer AS qtd
+       FROM lancamentos
+       WHERE eliminado_por_jogador_id IS NOT NULL
+       GROUP BY partida_id, eliminado_por_jogador_id
+     ) elims
+       ON elims.partida_id = l.partida_id
+       AND elims.eliminado_por_jogador_id = l.jogador_id
+     WHERE p.temporada_id = $1 AND p.finalizada = true`,
     [temporadaId],
   );
 
@@ -66,7 +83,7 @@ export async function calcularRankingsDaTemporada(
   const lancamentos: LancamentoDoJogador[] = rows.map((linha) => ({
     jogadorId: String(linha.jogador_id),
     posicao: linha.posicao,
-    almas: linha.almas,
+    almas: calcularAlmas(linha.quantidade_eliminados, linha.posicao),
   }));
 
   const agregados = agregarResultadosPorJogador(

@@ -6,7 +6,7 @@ import {
   criarTemporada,
   encerrarTemporada,
 } from "@/lib/temporadas";
-import { criarPartida, lancarResultado } from "@/lib/partidas";
+import { atualizarLancamento, criarPartida, finalizarPartida } from "@/lib/partidas";
 import {
   DadosDaSaidaInvalidosError,
   calcularSaldoDaTemporada,
@@ -28,6 +28,14 @@ const PARAMETROS_DE_TESTE = {
   estruturaDeBlinds: [],
   fichasIniciais: [],
 };
+
+/** Preenche posição de todo mundo e finaliza — atalho pra montar fixtures nos testes. */
+async function finalizarComResultado(partidaId: number, jogadorIds: number[]) {
+  for (const [i, jogadorId] of jogadorIds.entries()) {
+    await atualizarLancamento(partidaId, jogadorId, { posicao: i + 1 });
+  }
+  return finalizarPartida(partidaId);
+}
 
 async function limpar() {
   await db.query("DELETE FROM caixa_transacoes");
@@ -51,10 +59,7 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
     );
     const ids = jogadores.map((j) => j.id);
     const partida = await criarPartida("2026-01-01", ids);
-    await lancarResultado(
-      partida.id,
-      ids.map((id, i) => ({ jogadorId: id, posicao: i + 1, almas: 0, pagamento: true })),
-    );
+    await finalizarComResultado(partida.id, ids);
 
     // 5 * 10 - (20 + 10) = 20
     const saldo = await calcularSaldoDaTemporada(temporada.id);
@@ -91,10 +96,7 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
     );
     const ids = jogadores.map((j) => j.id);
     const partida = await criarPartida("2026-01-01", ids);
-    await lancarResultado(
-      partida.id,
-      ids.map((id, i) => ({ jogadorId: id, posicao: i + 1, almas: 0, pagamento: true })),
-    );
+    await finalizarComResultado(partida.id, ids);
     await lancarSaidaManual(temporada.id, {
       data: "2026-01-05",
       descricao: "Baralho",

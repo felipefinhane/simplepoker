@@ -91,7 +91,7 @@ export async function lancarSaidaManual(
 
   const linha = await withTransaction(async (client) => {
     // `FOR UPDATE` trava a linha da Temporada até o fim da transação —
-    // mesma técnica de `lancarResultado` (ticket 06), pra fechar a
+    // mesma técnica de `finalizarPartida` (ticket 06/10), pra fechar a
     // corrida entre "checar se está aberta" e "gravar a saída" contra um
     // `encerrarTemporada` concorrente.
     const { rows: temporadaRows } = await client.query<{ aberta: boolean }>(

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { buscarTemporadaAberta } from "@/lib/temporadas";
-import { listarPartidasDaTemporada, partidaEstaLancada } from "@/lib/partidas";
+import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
 import { RankingsDaTemporada } from "@/components/rankings-da-temporada";
 
@@ -9,10 +9,10 @@ export default async function Home() {
   const rankings = temporada
     ? await calcularRankingsDaTemporada(temporada.id)
     : null;
-  // Só Partidas já lançadas aparecem pra visitante — uma pendente não tem
-  // nada pra mostrar de qualquer forma (todo Lançamento vem vazio).
+  // Só Partidas finalizadas aparecem pra visitante — uma em andamento
+  // ainda pode ter posições incompletas.
   const partidas = temporada
-    ? (await listarPartidasDaTemporada(temporada.id)).filter(partidaEstaLancada)
+    ? (await listarPartidasDaTemporada(temporada.id)).filter((p) => p.finalizada)
     : [];
 
   return (

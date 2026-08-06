@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { criarJogador } from "@/lib/jogadores";
 import { criarTemporada } from "@/lib/temporadas";
-import { criarPartida, lancarResultado } from "@/lib/partidas";
+import { atualizarLancamento, criarPartida, finalizarPartida } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
 
 const PARAMETROS_DE_TESTE = {
@@ -28,6 +28,20 @@ async function limpar() {
   await db.query("DELETE FROM jogadores WHERE nome LIKE '%de Teste'");
 }
 
+/** Preenche posição (e eliminador) de todo mundo e finaliza de uma vez — atalho pra montar fixtures nos testes. */
+async function finalizarComResultado(
+  partidaId: number,
+  entradas: { jogadorId: number; posicao: number; eliminadoPorJogadorId?: number | null }[],
+) {
+  for (const entrada of entradas) {
+    await atualizarLancamento(partidaId, entrada.jogadorId, {
+      posicao: entrada.posicao,
+      eliminadoPorJogadorId: entrada.eliminadoPorJogadorId ?? null,
+    });
+  }
+  return finalizarPartida(partidaId);
+}
+
 beforeEach(limpar);
 afterEach(limpar);
 afterAll(async () => {
@@ -39,55 +53,60 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
     expect(await calcularRankingsDaTemporada(999999)).toBeNull();
   });
 
-  it("agrega Lançamentos de várias Partidas e ordena os dois rankings", async () => {
+  it("agrega Lançamentos de várias Partidas finalizadas e ordena os dois rankings", async () => {
     const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
     const jogadores = await Promise.all(
       ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
     );
-    const ids = jogadores.map((j) => j.id);
+    const [ana, beto, caio, dede, elis] = jogadores.map((j) => j.id);
 
-    // Partida 1: Ana 1º (2 almas), Beto 2º, Caio 3º, Dedé 4º, Elis 5º
-    const partida1 = await criarPartida("2026-01-01", ids);
-    await lancarResultado(
-      partida1.id,
-      ids.map((id, i) => ({ jogadorId: id, posicao: i + 1, almas: i === 0 ? 2 : 0, pagamento: true })),
-    );
+    // Partida 1: Ana 1º (elimina Caio), Beto 2º, Caio 3º, Dedé 4º, Elis 5º.
+    // Almas: Ana = 1(própria)+1(matou Caio) = 2. Beto = 1(própria) = 1.
+    // Pontos: Ana=25+2=27, Beto=18+1=19.
+    const partida1 = await criarPartida("2026-01-01", [ana, beto, caio, dede, elis]);
+    await finalizarComResultado(partida1.id, [
+      { jogadorId: ana, posicao: 1 },
+      { jogadorId: beto, posicao: 2 },
+      { jogadorId: caio, posicao: 3, eliminadoPorJogadorId: ana },
+      { jogadorId: dede, posicao: 4 },
+      { jogadorId: elis, posicao: 5 },
+    ]);
 
-    // Partida 2: Beto 1º (3 almas), Ana 2º, Caio 3º, Dedé 4º, Elis 5º
-    const partida2 = await criarPartida("2026-01-08", ids);
-    const ordemInvertida = [ids[1], ids[0], ids[2], ids[3], ids[4]];
-    await lancarResultado(
-      partida2.id,
-      ordemInvertida.map((id, i) => ({ jogadorId: id, posicao: i + 1, almas: i === 0 ? 3 : 0, pagamento: true })),
-    );
+    // Partida 2: Beto 1º (elimina Caio e Dedé), Ana 2º, Caio 3º, Dedé 4º, Elis 5º.
+    // Almas: Beto = 1+2 = 3. Ana = 1.
+    // Pontos: Beto=25+3=28, Ana=18+1=19.
+    const partida2 = await criarPartida("2026-01-08", [ana, beto, caio, dede, elis]);
+    await finalizarComResultado(partida2.id, [
+      { jogadorId: beto, posicao: 1 },
+      { jogadorId: ana, posicao: 2 },
+      { jogadorId: caio, posicao: 3, eliminadoPorJogadorId: beto },
+      { jogadorId: dede, posicao: 4, eliminadoPorJogadorId: beto },
+      { jogadorId: elis, posicao: 5 },
+    ]);
 
     const rankings = await calcularRankingsDaTemporada(temporada.id);
 
-    // Ana: 27 (1º+2almas) + 18 (2º) = 45 pontos, 2 almas
-    // Beto: 18 (2º) + 28 (1º+3almas=25+3) = 46 pontos, 3 almas
+    // Ana: 27+19=46 pontos, 2+1=3 almas. Beto: 19+28=47 pontos, 1+3=4 almas.
     expect(rankings?.rankingDePontuacao[0]).toMatchObject({
       nome: "Beto de Teste",
-      totalPontos: 46,
+      totalPontos: 47,
     });
     expect(rankings?.rankingDePontuacao[1]).toMatchObject({
       nome: "Ana de Teste",
-      totalPontos: 45,
+      totalPontos: 46,
     });
 
-    // Ranking Carrasco: Beto (3 almas) na frente de Ana (2 almas)
     expect(rankings?.rankingCarrasco[0]).toMatchObject({
       nome: "Beto de Teste",
-      totalAlmas: 3,
+      totalAlmas: 4,
     });
 
     // jogadorId no retorno é o id numérico de verdade do Jogador, não o nome.
-    expect(rankings?.rankingDePontuacao[0].jogadorId).toBe(
-      jogadores.find((j) => j.nome === "Beto de Teste")!.id,
-    );
+    expect(rankings?.rankingDePontuacao[0].jogadorId).toBe(beto);
   });
 
   it("nunca mistura dois Jogadores com o mesmo nome", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE);
     const homonimos = await Promise.all([
       criarJogador("Zeca de Teste"),
       criarJogador("Zeca de Teste"),
@@ -98,12 +117,12 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
     const ids = [...homonimos.map((j) => j.id), ...outros.map((j) => j.id)];
 
     const partida = await criarPartida("2026-01-01", ids);
-    await lancarResultado(
+    await finalizarComResultado(
       partida.id,
-      ids.map((id, i) => ({ jogadorId: id, posicao: i + 1, almas: 0, pagamento: true })),
+      ids.map((id, i) => ({ jogadorId: id, posicao: i + 1 })),
     );
 
-    const rankings = await calcularRankingsDaTemporada(temporada.id);
+    const rankings = await calcularRankingsDaTemporada(partida.temporadaId);
 
     // 5 participantes, 2 com o mesmo nome — precisam continuar sendo 5
     // entradas distintas no ranking, não 4 (o que aconteceria se a
@@ -111,14 +130,18 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
     expect(rankings?.rankingDePontuacao).toHaveLength(5);
   });
 
-  it("ignora Partidas com resultado ainda não lançado", async () => {
+  it("ignora Partidas ainda não finalizadas (mesmo com posições parciais preenchidas)", async () => {
     const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
     const jogadores = await Promise.all(
       ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
     );
     const ids = jogadores.map((j) => j.id);
 
-    await criarPartida("2026-01-01", ids); // nunca lançada
+    const partida = await criarPartida("2026-01-01", ids);
+    // Preenche todo mundo, mas NÃO finaliza.
+    for (const [i, id] of ids.entries()) {
+      await atualizarLancamento(partida.id, id, { posicao: i + 1 });
+    }
 
     const rankings = await calcularRankingsDaTemporada(temporada.id);
 

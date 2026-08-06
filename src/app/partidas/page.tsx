@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getOrganizadorLogado } from "@/lib/auth/organizador";
-import { listarPartidas, partidaEstaLancada } from "@/lib/partidas";
+import { listarPartidas } from "@/lib/partidas";
 
 export default async function PartidasPage() {
   const organizador = await getOrganizadorLogado();
@@ -18,17 +18,14 @@ export default async function PartidasPage() {
         <Link href="/partidas/nova">+ Nova Partida</Link>
       </p>
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {partidas.map((partida) => {
-          const lancada = partidaEstaLancada(partida);
-          return (
-            <li key={partida.id} style={{ marginBottom: "0.5rem" }}>
-              <Link href={`/partidas/${partida.id}`}>
-                {partida.data} — {partida.lancamentos.length} participantes
-                {lancada ? "" : " (resultado pendente)"}
-              </Link>
-            </li>
-          );
-        })}
+        {partidas.map((partida) => (
+          <li key={partida.id} style={{ marginBottom: "0.5rem" }}>
+            <Link href={`/partidas/${partida.id}`}>
+              {partida.data} — {partida.lancamentos.length} participantes
+              {partida.finalizada ? "" : " (em andamento)"}
+            </Link>
+          </li>
+        ))}
         {partidas.length === 0 && <li>Nenhuma Partida ainda.</li>}
       </ul>
     </main>

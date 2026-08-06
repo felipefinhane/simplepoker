@@ -116,7 +116,7 @@ export async function iniciarTimer(partidaId: number): Promise<EstadoDoTimer> {
   if (contexto.estruturaDeBlinds.length === 0) throw new SemEstruturaDeBlindsError();
 
   await withTransaction(async (client) => {
-    // `FOR UPDATE`: mesma trava usada em lancarResultado/lancarSaidaManual,
+    // `FOR UPDATE`: mesma trava usada em finalizarPartida/lancarSaidaManual,
     // pra não deixar controlar o timer de uma Temporada que acabou de
     // encerrar no meio da chamada.
     const { rows } = await client.query<{ aberta: boolean }>(
