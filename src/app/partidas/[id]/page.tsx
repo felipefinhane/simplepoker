@@ -3,6 +3,7 @@ import { getOrganizadorLogado } from "@/lib/auth/organizador";
 import { buscarPartidaPorId } from "@/lib/partidas";
 import { buscarTemporadaPorId } from "@/lib/temporadas";
 import { LancamentoClient } from "./lancamento-client";
+import { TimerClient } from "./timer-client";
 
 export default async function PartidaPage({
   params,
@@ -22,6 +23,8 @@ export default async function PartidaPage({
   return (
     <main style={{ maxWidth: "560px", margin: "0 auto", padding: "2rem" }}>
       <h1>Partida — {partida.data}</h1>
+
+      <TimerClient partidaId={partida.id} podeControlar={podeEditar} />
 
       {podeEditar ? (
         <LancamentoClient partida={partida} />
