@@ -1,0 +1,858 @@
+<!-- Referência: telas exportadas do Google Stitch (via "Código para a área de transferência"), coladas pelo Organizador em 2026-08-06. Guardado aqui só como fonte de consulta do design system (cores/fontes/espaçamentos/componentes) usado no redesign mobile-first — não é código que roda, é o HTML/Tailwind bruto que o Stitch gerou.
+
+Telas 1-9 usam o mesmo design system (cores/fontes) e são a base real do redesign.
+Telas 10-11 (variantes "Resultados da Temporada" e "Ranking" em inglês/paleta dourada/fotos de banco) foram descartadas — fugiram da marca, não representam o produto real.
+-->
+
+<!-- Tela 1: Ranking (Home) -->
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Simplepoker - Ranking</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#95d4ac",
+                        "on-tertiary-container": "#b4b5b8",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#1a1c1e",
+                        "tertiary-fixed": "#e2e2e5",
+                        "on-primary": "#003920",
+                        "inverse-primary": "#2d6a48",
+                        "tertiary": "#c6c6c9",
+                        "secondary": "#e9c349",
+                        "tertiary-container": "#454749",
+                        "on-primary-fixed": "#002111",
+                        "outline-variant": "#404942",
+                        "surface-container-low": "#1a1c1c",
+                        "outline": "#8a938b",
+                        "on-surface-variant": "#c0c9c0",
+                        "surface-container": "#1e2020",
+                        "primary-fixed-dim": "#95d4ac",
+                        "on-secondary": "#3c2f00",
+                        "inverse-surface": "#e2e2e2",
+                        "on-surface": "#e2e2e2",
+                        "tertiary-fixed-dim": "#c6c6c9",
+                        "primary-fixed": "#b0f1c7",
+                        "background": "#121414",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#574500",
+                        "surface-container-lowest": "#0d0e0f",
+                        "secondary-fixed-dim": "#e9c349",
+                        "primary-container": "#0f5132",
+                        "surface-dim": "#121414",
+                        "inverse-on-surface": "#2f3131",
+                        "on-background": "#e2e2e2",
+                        "on-primary-container": "#84c39b",
+                        "on-tertiary": "#2f3133",
+                        "primary": "#95d4ac",
+                        "on-primary-fixed-variant": "#0f5132",
+                        "surface-container-high": "#282a2b",
+                        "on-secondary-fixed": "#241a00",
+                        "on-secondary-container": "#342800",
+                        "surface-container-highest": "#333535",
+                        "surface-bright": "#38393a",
+                        "on-tertiary-fixed-variant": "#454749",
+                        "surface": "#121414",
+                        "secondary-container": "#af8d11",
+                        "surface-variant": "#333535",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#ffe088"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "stack-gap": "12px",
+                        "section-margin": "32px",
+                        "container-padding": "20px",
+                        "touch-target-min": "48px"
+                    },
+                    "fontFamily": {
+                        "display-score": ["Hanken Grotesk"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-data": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "display-score": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-data": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .glass-card {
+            background: linear-gradient(145deg, theme('colors.surface-container-high'), theme('colors.surface-container'));
+            border: 1px solid theme('colors.outline-variant');
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .felt-glow {
+            box-shadow: inset 0 0 20px rgba(15, 81, 50, 0.2);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:grid md:grid-cols-[240px_1fr] md:items-start">
+<header class="bg-surface dark:bg-surface text-primary dark:text-primary flex justify-between items-center px-container-padding h-14 w-full z-50 md:col-span-2 sticky top-0 border-b border-surface-container-high md:border-none shadow-sm md:shadow-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">style</span>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Simplepoker</h1>
+</div>
+<button class="w-touch-target-min h-touch-target-min flex items-center justify-center rounded-full hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors text-on-surface-variant dark:text-on-surface-variant">
+<span class="material-symbols-outlined text-[24px]">account_circle</span>
+</button>
+</header>
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-2 pb-safe backdrop-blur-md bg-surface-container/90 dark:bg-surface-container/90 rounded-t-xl shadow-lg border-t border-surface-variant">
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary font-bold border-b-2 border-secondary pb-1 scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">trophy</span>
+<span class="font-label-sm text-label-sm mt-1">Ranking</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary transition-all" href="#">
+<span class="material-symbols-outlined">playing_cards</span>
+<span class="font-label-sm text-label-sm mt-1">Matches</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary transition-all" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-sm text-label-sm mt-1">Fund</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant hover:text-secondary dark:hover:text-secondary transition-all" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-label-sm text-label-sm mt-1">History</span>
+</a>
+</nav>
+<aside class="hidden md:flex flex-col gap-2 p-4 h-[calc(100vh-56px)] sticky top-14 border-r border-surface-container-high bg-surface">
+<a class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-high text-secondary font-bold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">trophy</span>
+<span>Ranking</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">playing_cards</span>
+<span>Matches</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span>Fund</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>History</span>
+</a>
+</aside>
+<main class="flex-1 px-container-padding py-6 pb-[100px] md:pb-6 overflow-y-auto">
+<div class="mb-section-margin">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Ranking da Temporada</h2>
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-primary-container/20 border border-primary-container text-primary font-label-data text-label-data">
+<span class="material-symbols-outlined text-[16px] mr-1">calendar_today</span>
+                Temporada 2024.1
+            </div>
+</div>
+<div class="grid grid-cols-3 gap-3 mb-section-margin items-end">
+<div class="glass-card rounded-xl p-4 flex flex-col items-center text-center order-2 md:order-1 h-[140px] justify-end relative mt-8">
+<div class="absolute -top-6 w-12 h-12 rounded-full bg-surface-container-highest border-2 border-outline-variant flex items-center justify-center font-headline-md text-headline-md text-on-surface font-bold">B</div>
+<div class="font-body-md text-body-md text-on-surface font-semibold truncate w-full mt-2">Bruna</div>
+<div class="font-label-data text-label-data text-on-surface-variant mt-1">95 pts</div>
+<div class="flex items-center text-error mt-1 text-xs">
+<span class="material-symbols-outlined text-[14px] mr-0.5">skull</span> 8
+                </div>
+<div class="w-full h-1 bg-tertiary-container rounded-full mt-3"></div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col items-center text-center order-1 md:order-2 h-[170px] justify-end relative shadow-[0_0_15px_rgba(233,195,73,0.15)] border-secondary/50 felt-glow">
+<div class="absolute -top-10 flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary text-[28px] mb-[-4px]" style="font-variation-settings: 'FILL' 1;">crown</span>
+<div class="w-14 h-14 rounded-full bg-secondary/10 border-2 border-secondary flex items-center justify-center font-headline-md text-headline-md text-secondary font-bold backdrop-blur-sm">A</div>
+</div>
+<div class="font-headline-md text-headline-md text-secondary font-bold truncate w-full mt-2">André</div>
+<div class="font-display-score text-[24px] leading-tight text-on-surface mt-1">120 <span class="text-sm text-on-surface-variant font-normal">pts</span></div>
+<div class="flex items-center text-error mt-2 text-sm bg-error/10 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[16px] mr-1">skull</span> 10
+                </div>
+<div class="w-full h-1.5 bg-secondary rounded-full mt-3"></div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col items-center text-center order-3 md:order-3 h-[130px] justify-end relative mt-10">
+<div class="absolute -top-6 w-12 h-12 rounded-full bg-surface-container-highest border-2 border-outline-variant flex items-center justify-center font-headline-md text-headline-md text-on-surface font-bold text-tertiary">C</div>
+<div class="font-body-md text-body-md text-on-surface font-semibold truncate w-full mt-2">Carlos</div>
+<div class="font-label-data text-label-data text-on-surface-variant mt-1">88 pts</div>
+<div class="flex items-center text-error mt-1 text-xs">
+<span class="material-symbols-outlined text-[14px] mr-0.5">skull</span> 12
+                </div>
+<div class="w-full h-1 bg-tertiary-container rounded-full mt-3"></div>
+</div>
+</div>
+<div class="mb-section-margin">
+<h3 class="font-body-lg text-body-lg text-on-surface-variant mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">format_list_numbered</span>
+                Classificação Geral
+            </h3>
+<div class="flex flex-col gap-2">
+<div class="flex items-center p-3 rounded-lg bg-surface-container-low border border-surface-container-high hover:bg-surface-container transition-colors">
+<div class="w-8 text-center font-label-data text-label-data text-on-surface-variant mr-2">4º</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-body-md text-body-md font-bold text-on-surface mr-3">D</div>
+<div class="flex-1">
+<div class="font-body-md text-body-md font-semibold text-on-surface">Daniel</div>
+</div>
+<div class="flex flex-col items-end">
+<div class="font-label-data text-label-data text-on-surface font-bold">75 pts</div>
+<div class="flex items-center text-error text-[10px] mt-0.5 opacity-80">
+<span class="material-symbols-outlined text-[12px] mr-0.5">skull</span> 5
+                        </div>
+</div>
+</div>
+<div class="flex items-center p-3 rounded-lg bg-surface-container-low border border-surface-container-high hover:bg-surface-container transition-colors">
+<div class="w-8 text-center font-label-data text-label-data text-on-surface-variant mr-2">5º</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-body-md text-body-md font-bold text-on-surface mr-3">E</div>
+<div class="flex-1">
+<div class="font-body-md text-body-md font-semibold text-on-surface">Eduardo</div>
+</div>
+<div class="flex flex-col items-end">
+<div class="font-label-data text-label-data text-on-surface font-bold">60 pts</div>
+<div class="flex items-center text-error text-[10px] mt-0.5 opacity-80">
+<span class="material-symbols-outlined text-[12px] mr-0.5">skull</span> 2
+                        </div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid md:grid-cols-2 gap-6">
+<div class="glass-card rounded-xl p-5 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+<span class="material-symbols-outlined text-[120px]">skull</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-error mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">skull</span>
+                    Ranking Carrasco
+                </h3>
+<div class="flex items-center bg-surface-container/50 rounded-lg p-3 mb-3 border border-error/20">
+<div class="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center font-body-md text-body-md font-bold text-error mr-3">C</div>
+<div class="flex-1">
+<div class="font-body-md text-body-md font-semibold text-on-surface">Carlos</div>
+<div class="text-xs text-on-surface-variant">Maior eliminador</div>
+</div>
+<div class="font-display-score text-[24px] text-error">12 <span class="text-xs font-normal">Almas</span></div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between py-2 border-b border-surface-container-high last:border-0">
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant text-sm w-4">2</span>
+<span class="font-body-md text-body-md text-on-surface">André</span>
+</div>
+<div class="flex items-center text-error/80 text-sm"><span class="material-symbols-outlined text-[16px] mr-1">skull</span> 10</div>
+</div>
+<div class="flex items-center justify-between py-2 border-b border-surface-container-high last:border-0">
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant text-sm w-4">3</span>
+<span class="font-body-md text-body-md text-on-surface">Bruna</span>
+</div>
+<div class="flex items-center text-error/80 text-sm"><span class="material-symbols-outlined text-[16px] mr-1">skull</span> 8</div>
+</div>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined">history</span>
+                    Últimas Partidas
+                </h3>
+<div class="flex flex-col gap-3">
+<div class="group flex items-center justify-between p-3 rounded-lg bg-surface-container-low border border-surface-container-high hover:border-outline-variant cursor-pointer transition-colors">
+<div>
+<div class="font-label-data text-label-data text-on-surface font-semibold group-hover:text-primary transition-colors">Etapa 4 - NLH Freezeout</div>
+<div class="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">calendar_month</span> 15 Out</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">groups</span> 18 Jogadores</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_right</span>
+</div>
+<div class="group flex items-center justify-between p-3 rounded-lg bg-surface-container-low border border-surface-container-high hover:border-outline-variant cursor-pointer transition-colors">
+<div>
+<div class="font-label-data text-label-data text-on-surface font-semibold group-hover:text-primary transition-colors">Etapa 3 - Turbo Bounty</div>
+<div class="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">calendar_month</span> 01 Out</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">groups</span> 22 Jogadores</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
+
+<!-- Tela 2: Partida Em Andamento -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Simplepoker - Partida Em Andamento</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col pb-24 selection:bg-secondary/30 selection:text-secondary">
+<header class="flex justify-between items-center px-container-padding h-14 w-full z-50 sticky top-0 bg-surface dark:bg-surface">
+<div class="flex items-center gap-4">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-primary dark:text-primary">style</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Simplepoker</h1>
+</div>
+<button aria-label="Account" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-on-surface-variant">account_circle</span>
+</button>
+</header>
+<main class="flex-1 px-container-padding flex flex-col gap-section-margin py-6 overflow-y-auto">
+<section class="flex flex-col items-center gap-1">
+<h2 class="font-headline-md text-headline-md text-on-surface">Torneio Semanal</h2>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant font-label-data text-label-data bg-surface-container-high px-4 py-2 rounded-full cursor-pointer hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+<span>15/05/2024</span>
+<span class="material-symbols-outlined text-sm">edit</span>
+</div>
+</section>
+<section class="w-full bg-primary-container rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-outline-variant/30 felt-glow flex flex-col relative">
+<div class="absolute -top-4 -right-4 opacity-10 text-9xl font-black pointer-events-none text-on-primary">♠</div>
+<div class="p-6 flex flex-col items-center justify-center text-center z-10">
+<div class="flex justify-between w-full mb-2">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">Nível 4</span>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary">12/15 Players</span>
+</div>
+<h3 class="font-body-lg text-body-lg text-on-primary mb-1">Blinds <span class="font-bold text-white">100/200</span></h3>
+<div class="font-display-score text-display-score text-white tabular-nums my-4 tracking-tighter">12:45</div>
+<div class="font-label-data text-label-data text-primary/80 mb-6">Próximo Nível: 200/400</div>
+<div class="flex items-center justify-center gap-8 w-full bg-surface-container-low/50 backdrop-blur-sm p-4 rounded-full border border-white/5">
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-surface/40 text-on-surface hover:bg-surface/80 transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">undo</span>
+</button>
+<button class="w-16 h-16 flex items-center justify-center rounded-full bg-secondary text-on-secondary shadow-lg hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-surface/40 text-on-surface hover:bg-surface/80 transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">skip_next</span>
+</button>
+</div>
+</div>
+</section>
+<section class="flex flex-col gap-stack-gap">
+<div class="flex justify-between items-end mb-2">
+<h3 class="font-headline-md text-headline-md text-on-surface">Participantes</h3>
+<span class="font-label-data text-label-data text-on-surface-variant bg-surface-container px-3 py-1 rounded-lg">15 Total</span>
+</div>
+<div class="flex flex-col gap-unit">
+<div class="bg-surface-container-low border border-surface-variant rounded-lg p-4 flex flex-row items-center justify-between group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/30">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div>
+<div class="font-body-md text-body-md font-semibold text-on-surface">Daniel</div>
+<div class="font-label-sm text-label-sm text-secondary bg-secondary/10 inline-block px-2 py-0.5 rounded mt-1">Ativo</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<label class="flex items-center gap-2 cursor-pointer mr-2">
+<input checked="" class="form-checkbox h-5 w-5 text-secondary rounded border-outline-variant bg-surface-container-highest focus:ring-secondary/50 focus:ring-offset-surface" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Pagou</span>
+</label>
+<button class="px-4 py-2 bg-error-container/20 text-error rounded border border-error/30 hover:bg-error-container/40 transition-colors font-label-sm text-label-sm">Saiu</button>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-surface-variant/50 rounded-lg p-4 flex flex-row items-center justify-between opacity-70">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">
+<span class="font-label-data text-label-data font-bold">9º</span>
+</div>
+<div>
+<div class="font-body-md text-body-md text-on-surface-variant line-through decoration-error/50">Fabio</div>
+<div class="font-label-sm text-label-sm text-error bg-error-container/20 inline-block px-2 py-0.5 rounded mt-1">Eliminado por: Carlos</div>
+</div>
+</div>
+<button class="px-3 py-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">undo</span>
+</button>
+</div>
+</div>
+</section>
+<section class="flex flex-col gap-4 mt-4">
+<button class="w-full min-h-[56px] flex items-center justify-center gap-2 bg-transparent border border-secondary text-secondary rounded-lg font-body-md text-body-md font-semibold hover:bg-secondary/10 transition-colors">
+<span class="material-symbols-outlined">person_add</span> Adicionar Jogador
+            </button>
+<button class="w-full min-h-[56px] flex items-center justify-center gap-2 bg-surface-variant text-on-surface-variant rounded-lg font-body-md text-body-md font-semibold opacity-50 cursor-not-allowed" disabled="">Finalizar Partida</button>
+</section>
+</main>
+</body></html>
+
+<!-- Tela 3: Timer de Blinds -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Timer de Blinds - Simplepoker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        body { background: radial-gradient(circle at center, #0F5132 0%, #0A0B0C 100%); overscroll-behavior: none; }
+        .timer-glow { text-shadow: 0 0 40px rgba(233, 195, 73, 0.4); }
+        .blind-glow { text-shadow: 0 0 20px rgba(149, 212, 172, 0.3); }
+    </style>
+</head>
+<body class="text-on-surface h-screen w-screen overflow-hidden flex flex-col justify-between selection:bg-secondary selection:text-on-secondary">
+<header class="flex justify-between items-center px-container-padding h-14 w-full z-50 bg-transparent">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center text-primary dark:text-primary hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">style</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Simplepoker</h1>
+<button aria-label="Profile" class="w-10 h-10 flex items-center justify-center text-primary dark:text-primary hover:bg-surface-container-high transition-colors rounded-full">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</header>
+<main class="flex-grow flex flex-col items-center justify-center px-container-padding w-full max-w-4xl mx-auto relative z-10 space-y-section-margin">
+<div class="inline-flex items-center space-x-2 px-6 py-2 rounded-full border border-secondary/30 bg-surface/40 backdrop-blur-sm">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-data text-label-data text-secondary uppercase tracking-widest">Nível 5 de 15</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="font-body-md text-body-md text-on-surface-variant mb-2">Blinds Atuais (SB / BB)</span>
+<div class="font-display-score text-display-score text-primary blind-glow tracking-tighter" style="font-size: 5rem; line-height: 1.1;">250 <span class="text-on-surface-variant font-light mx-2">/</span> 500</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-2 bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant">Ante: 50</span>
+</div>
+<div class="relative w-full flex justify-center items-center py-8">
+<div class="absolute inset-0 rounded-full bg-secondary/5 blur-3xl scale-150"></div>
+<div class="font-display-score text-display-score text-secondary timer-glow font-black tabular-nums tracking-tighter" style="font-size: 8rem; line-height: 1;">18:30</div>
+</div>
+<div class="flex flex-col items-center bg-surface-container/60 backdrop-blur-md rounded-2xl p-6 border border-outline-variant/30 w-full max-w-md shadow-lg">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Próximo Nível</span>
+<div class="font-headline-md text-headline-md text-on-surface">500 <span class="text-on-surface-variant mx-1">/</span> 1000</div>
+<div class="flex items-center space-x-1 mt-2 text-primary font-label-data text-label-data">
+<span class="material-symbols-outlined text-sm">schedule</span>
+<span>em 20 min</span>
+</div>
+</div>
+</main>
+<footer class="w-full pb-safe pt-4 px-container-padding bg-surface-container/80 backdrop-blur-xl border-t border-outline-variant/20 z-50">
+<div class="flex justify-around items-center max-w-md mx-auto h-20">
+<button aria-label="Reiniciar" class="flex flex-col items-center justify-center w-touch-target-min h-touch-target-min text-on-surface-variant hover:text-primary transition-colors group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-surface group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[28px]">replay</span>
+</div>
+<span class="font-label-sm text-label-sm mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Reiniciar</span>
+</button>
+<button aria-label="Nível Anterior" class="flex flex-col items-center justify-center w-touch-target-min h-touch-target-min text-on-surface-variant hover:text-primary transition-colors group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-surface group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[28px]">skip_previous</span>
+</div>
+<span class="font-label-sm text-label-sm mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Voltar</span>
+</button>
+<button aria-label="Pausar Timer" class="flex flex-col items-center justify-center -mt-6 group">
+<div class="w-20 h-20 flex items-center justify-center rounded-full bg-secondary text-on-secondary shadow-[0_0_24px_rgba(233,195,73,0.3)] hover:scale-105 active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined text-[40px]" style="font-variation-settings: 'FILL' 1;">pause</span>
+</div>
+</button>
+<button aria-label="Próximo Nível" class="flex flex-col items-center justify-center w-touch-target-min h-touch-target-min text-on-surface-variant hover:text-primary transition-colors group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-surface group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[28px]">skip_next</span>
+</div>
+<span class="font-label-sm text-label-sm mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Pular</span>
+</button>
+<button aria-label="Configurações" class="flex flex-col items-center justify-center w-touch-target-min h-touch-target-min text-on-surface-variant hover:text-primary transition-colors group">
+<div class="w-12 h-12 flex items-center justify-center rounded-full bg-surface group-hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[28px]">settings</span>
+</div>
+<span class="font-label-sm text-label-sm mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Config</span>
+</button>
+</div>
+</footer>
+</body></html>
+
+<!-- Tela 4: Caixa -->
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<title>Simplepoker - Caixa</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24 font-body-md">
+<header class="bg-surface dark:bg-surface flex justify-between items-center px-container-padding h-14 w-full z-50 sticky top-0">
+<button aria-label="Menu" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-primary">
+<span class="material-symbols-outlined">style</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Simplepoker</h1>
+<button aria-label="Profile" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</header>
+<main class="px-container-padding pt-stack-gap pb-section-margin max-w-2xl mx-auto">
+<section class="mb-section-margin">
+<div class="bg-surface-container rounded-xl card-border p-6 relative overflow-hidden">
+<div class="absolute -right-10 -top-10 w-32 h-32 bg-primary-container rounded-full opacity-20 blur-2xl"></div>
+<div class="absolute -left-10 -bottom-10 w-32 h-32 bg-secondary rounded-full opacity-10 blur-2xl"></div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest mb-2">Saldo do Caixa</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-headline-md text-secondary">R$</span>
+<h2 class="font-display-score text-display-score text-secondary">1.250,00</h2>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex justify-between items-end mb-stack-gap">
+<h3 class="font-headline-md text-headline-md text-on-surface">Histórico</h3>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Maio 2023</span>
+</div>
+<div class="space-y-unit flex flex-col">
+<div class="bg-surface-container-low rounded-lg p-4 flex items-center justify-between card-border hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined fill-icon">arrow_downward</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Entrada — Partida #12</p>
+<p class="font-label-data text-label-data text-on-surface-variant">15/05</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-label-data text-label-data text-primary">+ R$ 300,00</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-4 flex items-center justify-between card-border hover:bg-surface-container transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-error-container/20 flex items-center justify-center text-error">
+<span class="material-symbols-outlined fill-icon">arrow_upward</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Saída — Compra Baralhos</p>
+<p class="font-label-data text-label-data text-on-surface-variant">10/05</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-label-data text-label-data text-error">- R$ 45,00</p>
+</div>
+</div>
+</div>
+</section>
+<div class="mt-section-margin flex justify-center">
+<button class="w-full md:w-auto h-touch-target-min px-8 rounded-full bg-transparent border-2 border-secondary text-secondary font-label-sm text-label-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-secondary hover:text-on-secondary transition-all active:scale-95">
+<span class="material-symbols-outlined">add</span> Lançar Saída
+            </button>
+</div>
+</main>
+</body></html>
+
+<!-- Tela 5: Histórico de Temporadas (lista) -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Simplepoker - Histórico</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        .season-card { background: linear-gradient(145deg, #1e2020 0%, #121414 100%); border: 1px solid #282a2b; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4); transition: all 0.2s ease; }
+        .season-card:active { transform: scale(0.98); border-color: #e9c349; }
+        .winner-avatar { background: linear-gradient(135deg, #af8d11, #e9c349); box-shadow: 0 0 10px rgba(233, 195, 73, 0.3); }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md pb-24 md:pb-0 select-none">
+<header class="bg-surface dark:bg-surface flex justify-between items-center px-container-padding h-14 w-full z-50 sticky top-0 border-b border-surface-container-high/30 md:hidden">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Histórico</h1>
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</header>
+<main class="w-full max-w-4xl mx-auto px-container-padding py-6 relative z-10">
+<div class="flex flex-col gap-stack-gap">
+<div class="season-card rounded-xl p-5 cursor-pointer relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-headline-md text-headline-md text-on-surface">Temporada 2023.2</h3>
+<span class="bg-surface-variant text-tertiary font-label-sm text-label-sm px-2 py-0.5 rounded uppercase tracking-wide border border-outline-variant/30">Encerrada</span>
+</div>
+<p class="font-label-data text-label-data text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span> Jul 2023 - Dez 2023
+                        </p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors">chevron_right</span>
+</div>
+<div class="bg-surface-container-low rounded-lg p-4 flex flex-col sm:flex-row gap-4 justify-between items-center relative z-10 border border-surface-container">
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<div class="winner-avatar w-12 h-12 rounded-full flex items-center justify-center text-on-secondary font-headline-md text-headline-md shrink-0 ring-2 ring-surface">
+<span class="material-symbols-outlined fill text-[24px]">emoji_events</span>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-secondary uppercase tracking-widest mb-0.5">Campeão</p>
+<p class="font-body-lg text-body-lg text-on-surface font-semibold">Marcelo S.</p>
+</div>
+</div>
+<div class="flex gap-6 w-full sm:w-auto justify-between sm:justify-start">
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Total de Partidas</p>
+<p class="font-label-data text-label-data text-on-surface text-lg">24</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
+
+<!-- Tela 6: Gerenciamento de Jogadores -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Simplepoker - Gerenciamento de Jogadores</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        .toggle-checkbox:checked { right: 0; border-color: #95d4ac; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #0f5132; }
+        .toggle-checkbox:checked + .toggle-label:after { transform: translateX(100%); border-color: white; }
+        .toggle-label { width: 44px; height: 24px; background-color: #333535; border-radius: 9999px; position: relative; cursor: pointer; transition: background-color 0.2s ease-in-out; }
+        .toggle-label:after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background-color: white; border-radius: 50%; transition: transform 0.2s ease-in-out; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col pb-safe">
+<header class="bg-surface dark:bg-surface font-headline-md text-headline-md flex justify-between items-center px-container-padding h-14 w-full z-50 sticky top-0 border-b border-surface-container-high/50">
+<div class="flex items-center gap-stack-gap">
+<button aria-label="Voltar" class="w-touch-target-min h-touch-target-min flex items-center justify-center text-primary dark:text-primary hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors rounded-full -ml-3">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">Simplepoker</h1>
+</div>
+</header>
+<main class="flex-1 px-container-padding pt-stack-gap pb-[88px] flex flex-col gap-section-margin">
+<section class="flex flex-col gap-2">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Jogadores</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Gerencie a lista de participantes do clube.</p>
+</section>
+<section>
+<div class="bg-surface-container-low rounded-xl border border-surface-variant p-4 shadow-lg">
+<form class="flex flex-col sm:flex-row gap-stack-gap">
+<div class="flex-1 relative">
+<input class="block w-full pl-10 pr-3 py-3 bg-surface-container-highest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface placeholder-on-surface-variant/50 focus:ring-primary focus:border-primary transition-colors" placeholder="Nome do novo jogador..." type="text"/>
+</div>
+<button class="h-14 sm:h-auto px-6 bg-secondary text-on-secondary font-headline-md text-headline-md rounded-lg flex items-center justify-center gap-2 hover:bg-secondary-fixed transition-colors" type="submit">
+<span class="material-symbols-outlined font-bold">add</span> Adicionar
+            </button>
+</form>
+</div>
+</section>
+<section class="flex flex-col gap-stack-gap">
+<div class="group bg-surface-container rounded-xl border border-outline-variant/30 p-4 flex items-center justify-between gap-4 transition-all hover:bg-surface-container-high">
+<div class="flex items-center gap-4 flex-1 overflow-hidden">
+<div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container font-headline-md text-headline-md flex items-center justify-center flex-shrink-0 shadow-inner">A</div>
+<div class="flex flex-col overflow-hidden">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface truncate group-hover:text-primary transition-colors cursor-pointer">André</span>
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;" title="Organizador">star</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary">Ativo</span>
+</div>
+</div>
+<div class="flex items-center flex-shrink-0">
+<input checked="" class="sr-only toggle-checkbox" id="toggle-andre" type="checkbox"/>
+<label class="toggle-label" for="toggle-andre"></label>
+</div>
+</div>
+<div class="group bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-4 flex items-center justify-between gap-4 transition-all opacity-60 grayscale">
+<div class="flex items-center gap-4 flex-1 overflow-hidden">
+<div class="w-12 h-12 rounded-full bg-surface-variant text-on-surface-variant font-headline-md text-headline-md flex items-center justify-center flex-shrink-0">C</div>
+<div class="flex flex-col overflow-hidden">
+<span class="font-headline-md text-headline-md text-on-surface-variant truncate cursor-pointer">Carlos</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Inativo</span>
+</div>
+</div>
+<div class="flex items-center flex-shrink-0">
+<input class="sr-only toggle-checkbox" id="toggle-carlos" type="checkbox"/>
+<label class="toggle-label" for="toggle-carlos"></label>
+</div>
+</div>
+</section>
+</main>
+</body></html>
+
+<!-- Tela 7: Parâmetros da Temporada -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Simplepoker - Parâmetros da Temporada</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+        .felt-glow { box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+        .input-focus-ring:focus-within { border-color: theme('colors.primary'); box-shadow: 0 0 0 2px rgba(149, 212, 172, 0.2); }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col pb-24">
+<header class="bg-surface text-primary font-headline-md text-headline-md font-bold tracking-tight flex justify-between items-center px-container-padding h-14 w-full z-50 sticky top-0">
+<div class="flex items-center gap-2 cursor-pointer p-2 rounded-lg -ml-2" onclick="history.back()">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</div>
+<div class="text-primary">Configurações</div>
+<div class="flex items-center gap-2 cursor-pointer p-2 rounded-lg -mr-2">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</div>
+</header>
+<main class="flex-1 px-container-padding py-section-margin max-w-3xl mx-auto w-full flex flex-col gap-section-margin">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface mb-2">Parâmetros da Temporada</h1>
+<p class="text-on-surface-variant">Ajuste as regras globais para todos os torneios desta temporada.</p>
+</div>
+<section class="bg-surface-container-low rounded-xl border border-surface-variant p-5">
+<h2 class="font-headline-md text-headline-md flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary">social_leaderboard</span> Tabela de Pontos
+            </h2>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-4 bg-surface-container p-3 rounded-lg border border-surface-variant input-focus-ring transition-all">
+<div class="w-12 h-12 bg-secondary-container text-on-secondary-container rounded-lg flex items-center justify-center font-bold text-lg">1º</div>
+<div class="flex-1">
+<label class="text-xs text-on-surface-variant uppercase tracking-wider font-semibold block mb-1">Pontos Base</label>
+<input class="w-full bg-transparent border-none text-on-surface font-label-data p-0 focus:ring-0 text-lg" type="number" value="100"/>
+</div>
+</div>
+<button class="flex items-center justify-center gap-2 text-primary font-semibold py-3 hover:bg-surface-container transition-colors rounded-lg border border-dashed border-primary-container mt-2">
+<span class="material-symbols-outlined">add</span> Adicionar Posição
+                </button>
+</div>
+</section>
+<section class="bg-[#0F5132] rounded-xl border border-[#0A3B22] p-5 felt-glow relative overflow-hidden">
+<h2 class="font-headline-md text-headline-md flex items-center gap-2 mb-4 text-white">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">timer</span> Estrutura de Blinds
+            </h2>
+<div class="flex flex-col gap-2 relative z-10">
+<div class="grid grid-cols-12 gap-2 items-center bg-black/30 p-2 rounded-lg border border-white/10">
+<div class="col-span-2 text-white font-bold text-center">1</div>
+<div class="col-span-4 flex items-center justify-center gap-1 font-label-data text-white">
+<input class="w-12 bg-transparent border-b border-white/20 text-center p-0 focus:ring-0 focus:border-secondary h-6" type="text" value="25"/> /
+                        <input class="w-12 bg-transparent border-b border-white/20 text-center p-0 focus:ring-0 focus:border-secondary h-6" type="text" value="50"/>
+</div>
+<div class="col-span-4 flex items-center justify-center font-label-data text-white">
+<input class="w-12 bg-transparent border-b border-white/20 text-center p-0 focus:ring-0 focus:border-secondary h-6" type="number" value="15"/>
+</div>
+</div>
+<button class="w-full bg-black/40 hover:bg-black/60 text-secondary font-bold py-3 mt-2 rounded-lg border border-secondary/30 transition-all flex justify-center items-center gap-2">
+<span class="material-symbols-outlined">add</span> Adicionar Nível
+                </button>
+</div>
+</section>
+<div class="flex gap-4 sticky bottom-20 z-40 bg-background/80 backdrop-blur-md p-4 -mx-container-padding">
+<button class="flex-1 h-14 bg-secondary text-on-secondary-fixed font-bold rounded-lg hover:bg-secondary-fixed-dim transition-colors text-lg">Salvar Configurações</button>
+</div>
+<section class="mt-8 pt-8 border-t border-error/20 pb-8">
+<h3 class="text-error font-headline-md mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined">warning</span> Zona de Perigo
+            </h3>
+<p class="text-sm text-on-surface-variant mb-4">Esta ação irá finalizar a temporada atual, calculando o ranking final e impedindo novas edições. Esta ação é irreversível.</p>
+<button class="w-full h-14 bg-transparent border-2 border-error text-error font-bold rounded-lg hover:bg-error/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">power_settings_new</span> Encerrar Temporada
+            </button>
+</section>
+</main>
+</body></html>
+
+<!-- Tela 8: Modal de confirmação "Encerrar Temporada" -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Encerrar Temporada - Simplepoker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md overflow-hidden antialiased">
+<main class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-surface-container-lowest/80 backdrop-blur-sm">
+<article class="glass-panel w-full max-w-md rounded-2xl overflow-hidden shadow-2xl" role="dialog">
+<div class="p-6 pb-4 border-b border-surface-bright/30 flex flex-col items-center text-center gap-4 relative overflow-hidden">
+<div class="w-16 h-16 rounded-full bg-error-container/20 flex items-center justify-center border border-error/20 relative z-10">
+<span class="material-symbols-outlined text-error text-3xl">warning</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-error relative z-10">Encerrar Temporada?</h2>
+</div>
+<div class="p-6 space-y-6">
+<p class="font-body-md text-body-md text-on-surface-variant text-center leading-relaxed">Esta ação é irreversível. O ranking será congelado, o campeão será oficialmente coroado e nenhuma nova partida poderá ser registrada nesta temporada.</p>
+<div class="bg-surface-container-low rounded-xl p-4 border border-surface-bright/50 space-y-3">
+<div class="flex justify-between items-center pb-3 border-b border-surface-bright/30">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Temporada</span>
+<span class="font-label-data text-label-data text-on-surface font-semibold">2024.1</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Líder Atual</span>
+<span class="font-label-data text-label-data text-secondary font-bold">André</span>
+</div>
+</div>
+</div>
+<div class="p-6 pt-2 gap-stack-gap flex flex-col sm:flex-row-reverse">
+<button class="flex-1 h-[56px] min-h-[56px] rounded-xl bg-error text-on-error font-label-sm text-label-sm uppercase tracking-wide font-bold flex items-center justify-center gap-2" type="button">
+<span class="material-symbols-outlined text-[20px]">lock</span> Confirmar e Encerrar
+                </button>
+<button class="flex-1 h-[56px] min-h-[56px] rounded-xl bg-transparent text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wide font-bold" type="button">Cancelar</button>
+</div>
+</article>
+</main>
+</body></html>
+
+<!-- Tela 9: Resultados da Temporada (histórico detalhe) -->
+<!DOCTYPE html>
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<title>Resultados da Temporada</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen pb-[80px]">
+<header class="bg-surface-dim dark:bg-surface-dim border-b border-outline-variant flex items-center justify-between px-container-padding w-full h-touch-target-min fixed z-40">
+<button aria-label="Voltar" class="w-10 h-10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-secondary">Season Results</h1>
+<button aria-label="Compartilhar" class="w-10 h-10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">share</span>
+</button>
+</header>
+<main class="pt-[64px] px-container-padding pb-safe max-w-2xl mx-auto">
+<div class="text-center mt-section-margin mb-8">
+<h2 class="font-headline-lg text-headline-lg text-secondary">Temporada Finalizada</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Outono 2023</p>
+</div>
+<div class="grid grid-cols-2 gap-stack-gap mb-section-margin">
+<div class="bg-surface-container-low border border-surface-variant rounded-lg p-4 flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-2 opacity-80">payments</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Total no Pote</span>
+<span class="font-label-data text-label-data text-on-surface font-bold text-lg">R$ 2.450,00</span>
+</div>
+<div class="bg-surface-container-low border border-surface-variant rounded-lg p-4 flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary mb-2 opacity-80">playing_cards</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Total de Partidas</span>
+<span class="font-label-data text-label-data text-on-surface font-bold text-lg">12</span>
+</div>
+</div>
+<div class="space-y-unit pb-8">
+<h3 class="font-body-lg text-body-lg text-on-surface-variant mb-4 px-2">Ranking Final</h3>
+<div class="bg-surface-container border border-surface-variant rounded-lg p-3 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="font-label-data text-label-data text-secondary w-6 text-center font-bold">1</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold">Ricardo</span>
+</div>
+<span class="font-label-data text-label-data text-secondary-fixed">1,850 pts</span>
+</div>
+</div>
+</main>
+</body></html>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { buscarTemporadaAberta } from "@/lib/temporadas";
 import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
@@ -16,26 +15,32 @@ export default async function Home() {
     : [];
 
   return (
-    <main style={{ maxWidth: "720px", margin: "0 auto", padding: "2rem" }}>
-      <h1>Simplepoker</h1>
-      <p style={{ opacity: 0.7 }}>
-        Ranking, resultados e caixa do campeonato de poker semanal do grupo.
-      </p>
+    <main className="px-container-padding py-6">
+      <div className="mb-section-margin">
+        <h1 className="mb-2 text-headline-lg text-on-surface">Ranking da Temporada</h1>
+        {temporada && (
+          <div className="inline-flex items-center rounded-full border border-primary-container bg-primary-container/20 px-3 py-1 text-label-data text-primary">
+            <span className="material-symbols-outlined mr-1 text-[16px]">calendar_today</span>
+            Temporada aberta desde {temporada.dataInicio.slice(0, 10)}
+          </div>
+        )}
+      </div>
 
       {!temporada || !rankings ? (
-        <p>Nenhuma Temporada aberta no momento.</p>
+        <p className="text-body-md text-on-surface-variant">
+          Nenhuma Temporada aberta no momento.
+        </p>
       ) : (
         <RankingsDaTemporada
           rankingDePontuacao={rankings.rankingDePontuacao}
           rankingCarrasco={rankings.rankingCarrasco}
-          partidas={partidas}
+          partidas={partidas.map((p) => ({
+            id: p.id,
+            data: p.data,
+            participantes: p.lancamentos.length,
+          }))}
         />
       )}
-
-      <p style={{ marginTop: "2rem", display: "flex", gap: "1rem" }}>
-        <Link href="/caixa">Caixa</Link>
-        <Link href="/historico">Temporadas anteriores</Link>
-      </p>
     </main>
   );
 }
