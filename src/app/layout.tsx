@@ -19,7 +19,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Simplepoker",
+  title: "Poker dos Amigos",
   description:
     "Ranking, resultados e caixa do campeonato de poker semanal do grupo.",
   // Safari no iOS não usa o manifest.ts (ticket 09) pra "Adicionar à Tela
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   // vez de em tela cheia como um app instalado.
   appleWebApp: {
     capable: true,
-    title: "Simplepoker",
+    title: "Poker Amigos",
     statusBarStyle: "black-translucent",
   },
   icons: {

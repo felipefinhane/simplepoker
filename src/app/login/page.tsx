@@ -45,11 +45,8 @@ export default function LoginPage() {
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-section-margin flex flex-col items-center gap-2 text-center">
-          <span
-            className="material-symbols-outlined text-4xl text-primary"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
-            style
+          <span className="text-4xl leading-none text-primary" aria-hidden>
+            ♠
           </span>
           <h1 className="text-headline-lg text-on-surface">Entrar</h1>
           <p className="text-body-md text-on-surface-variant">

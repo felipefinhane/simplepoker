@@ -3,8 +3,8 @@ import { THEME_COLOR } from "@/lib/theme";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Simplepoker",
-    short_name: "Simplepoker",
+    name: "Poker dos Amigos",
+    short_name: "Poker Amigos",
     description:
       "Ranking, resultados e caixa do campeonato de poker semanal do grupo.",
     start_url: "/",
