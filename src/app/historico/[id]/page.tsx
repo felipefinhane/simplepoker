@@ -69,6 +69,26 @@ export default async function TemporadaHistoricaPage({
         </p>
       </div>
 
+      {/* Aviso só pra Temporada 2026.1, importada de `POKER 1_2026.xlsx`
+          (ticket 24) — a planilha não registrava quem eliminou quem, só o
+          total de Almas por Jogador/Partida, então o "eliminado por" de
+          cada Lançamento aqui foi reconstruído (consistente nos totais,
+          mas não é a ordem real daquela noite). Checagem por data em vez
+          de um campo novo no banco — é histórico, não deve se repetir. */}
+      {temporada.dataInicio.startsWith("2026-02-03") && (
+        <div className="flex items-start gap-3 rounded-lg border border-secondary/30 bg-secondary-container/10 p-4 text-body-md text-on-surface-variant">
+          <span className="material-symbols-outlined mt-0.5 text-secondary">info</span>
+          <p>
+            Temporada importada de uma planilha antiga. Posições e Pontos são
+            os reais. A planilha não registrava quem eliminou quem — só o
+            total de Almas de cada Jogador — então o &quot;eliminado por&quot;
+            de cada Partida aqui foi <strong>reconstruído</strong> pra
+            fechar os totais de Almas certinhos; não reflete a ordem real
+            das eliminações daquela noite.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-stack-gap">
         <div className="flex flex-col items-center gap-2 rounded-lg border border-surface-container-high bg-surface-container-low p-4 text-center">
           <span className="material-symbols-outlined text-primary">playing_cards</span>
