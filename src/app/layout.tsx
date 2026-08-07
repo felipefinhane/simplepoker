@@ -38,6 +38,13 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: THEME_COLOR,
+  // Sem isso, `env(safe-area-inset-bottom)` (usado no `pb-safe` do
+  // BottomNavBar) resolve pra 0 no PWA instalado do iPhone — a barra
+  // fica colada no indicador de início (home indicator), fácil de
+  // acionar sem querer o gesto de minimizar/trocar de app ao tocar perto
+  // do rodapé. Com `cover`, o Safari reporta o inset de verdade e o
+  // `pb-safe` empurra a barra pra cima da área do gesto.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { Organizador } from "@/lib/auth/organizador";
 
@@ -80,7 +80,6 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [menuAberto, setMenuAberto] = useState(false);
 
   function estaAtivo(href: string) {
@@ -90,8 +89,11 @@ export function AppShell({
   async function sair() {
     setMenuAberto(false);
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
-    router.refresh();
+    // Navegação "dura" de propósito — mesmo motivo do /login (ver
+    // comentário lá): mais robusto que `router.push` dentro do PWA
+    // instalado no iPhone.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.href = "/";
   }
 
   return (

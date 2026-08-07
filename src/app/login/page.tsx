@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 
 const CAMPO_CLASSE =
   "block w-full rounded-lg border border-outline-variant bg-surface-container-highest py-3 pl-10 pr-3 font-body-md text-body-md text-on-surface placeholder-on-surface-variant/50 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [telefone, setTelefone] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -31,8 +29,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      // Navegação "dura" (não `router.push`) de propósito: garante que o
+      // layout raiz reavalia `getOrganizadorLogado()` do zero numa página
+      // nova, sem depender de uma transição client-side — mais robusto no
+      // PWA instalado (Safari/iOS costuma ser instável com navegação via
+      // History API dentro de um web app em modo standalone).
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/";
     } finally {
       setEnviando(false);
     }
