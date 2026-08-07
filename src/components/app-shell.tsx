@@ -14,6 +14,7 @@ interface NavItem {
 const ITENS_DE_NAVEGACAO: NavItem[] = [
   { href: "/", label: "Ranking", icone: "trophy" },
   { href: "/partidas", label: "Partidas", icone: "playing_cards" },
+  { href: "/blinds", label: "Blinds", icone: "timer" },
   { href: "/caixa", label: "Caixa", icone: "account_balance_wallet" },
   { href: "/historico", label: "Histórico", icone: "history" },
 ];
