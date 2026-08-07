@@ -22,6 +22,18 @@ export const metadata: Metadata = {
   title: "Simplepoker",
   description:
     "Ranking, resultados e caixa do campeonato de poker semanal do grupo.",
+  // Safari no iOS não usa o manifest.ts (ticket 09) pra "Adicionar à Tela
+  // de Início" — sem esses dois campos, o ícone salvo vira um print da
+  // página e o app abre dentro do Safari (barra de endereço visível) em
+  // vez de em tela cheia como um app instalado.
+  appleWebApp: {
+    capable: true,
+    title: "Simplepoker",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -44,6 +56,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
+        {/* `metadata.appleWebApp` (acima) já gera a meta `mobile-web-app-capable`
+            padrão — essa aqui é só o nome antigo com prefixo `apple-`, que
+            versões de iOS anteriores ao Safari 17.4 ainda exigem pra abrir
+            em tela cheia (sem barra de endereço) a partir da Tela de Início. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body>
         <RegisterServiceWorker />
