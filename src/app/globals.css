@@ -112,6 +112,13 @@
   padding-bottom: env(safe-area-inset-bottom, 20px);
 }
 
+/* Mesma ideia do `pb-safe`, pro topo: sem isso, com `viewport-fit=cover`
+   (ticket 21) o TopAppBar fica embaixo do notch/Dynamic Island/relógio
+   no PWA instalado do iPhone. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 @utility glass-card {
   background: linear-gradient(
     145deg,

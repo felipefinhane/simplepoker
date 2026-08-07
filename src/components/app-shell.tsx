@@ -98,7 +98,7 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen flex-col md:grid md:grid-cols-[240px_1fr] md:items-start">
-      <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between border-b border-surface-container-high bg-surface px-container-padding md:col-span-2 md:border-none">
+      <header className="sticky top-0 z-50 flex min-h-14 w-full items-center justify-between border-b border-surface-container-high bg-surface px-container-padding pt-safe md:col-span-2 md:border-none">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-2xl leading-none text-primary" aria-hidden>
             ♠
