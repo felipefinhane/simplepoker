@@ -12,8 +12,13 @@ export default async function JogadoresPage() {
   const jogadores = await listarJogadores();
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem" }}>
-      <h1>Jogadores</h1>
+    <main className="mx-auto flex max-w-2xl flex-col gap-section-margin px-container-padding py-6">
+      <div>
+        <h1 className="text-headline-lg text-on-surface">Jogadores</h1>
+        <p className="mt-1 text-body-md text-on-surface-variant">
+          Gerencie a lista de participantes do clube.
+        </p>
+      </div>
       <JogadoresClient jogadoresIniciais={jogadores} />
     </main>
   );

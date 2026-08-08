@@ -12,8 +12,13 @@ export default async function NovaPartidaPage() {
   const jogadoresAtivos = await listarJogadoresAtivos();
 
   return (
-    <main style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem" }}>
-      <h1>Nova Partida</h1>
+    <main className="mx-auto flex max-w-2xl flex-col gap-section-margin px-container-padding py-6">
+      <div>
+        <h1 className="text-headline-lg text-on-surface">Nova Partida</h1>
+        <p className="mt-1 text-body-md text-on-surface-variant">
+          Escolha a data e os participantes da noite.
+        </p>
+      </div>
       <NovaPartidaClient jogadoresAtivos={jogadoresAtivos} />
     </main>
   );
