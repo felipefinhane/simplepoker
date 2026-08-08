@@ -1,0 +1,18 @@
+# 36 — Timer não avançava de nível sozinho quando o tempo acabava
+
+**What to build:** Organizador relatou testando local: "o timer não pulou para o próximo nível" (nem no navegador do computador, nem no celular). Perguntou também se tinha relação com a Vercel "desligar" o app por falta de uso, e por que não tem som/notificação quando o blind muda.
+
+**Blocked by:** 14 (Timer)
+
+**Status:** done
+
+- [x] Investigado: `buscarEstadoDoTimer`/`montarEstado` sempre calcularam `segundosRestantes` clampado em 0 (`Math.max(0, duracaoTotal - decorrido)`), mas nada nunca incrementava `nivel` sozinho — só `pularNivel`/`voltarNivel` (controles manuais do Organizador) mudavam o nível. Ou seja: o cronômetro sempre chegou em 0:00 e **ficava parado ali pra sempre**, esperando alguém clicar "Pular Nível" na mão. Não era regressão de nenhum ticket anterior — nunca existiu auto-avanço, só não tinha ficado óbvio até agora
+- [x] Confirmado que não tem relação com Vercel: o Timer é "server-authoritative" — o estado (nível, se tá rodando, quando o nível atual começou) fica só no Postgres, e `segundosRestantes` é sempre recalculado a partir do relógio (`Date.now() - inicio_do_nivel`) a cada leitura, não existe contador rodando em processo nenhum. Um cold start da Vercel no pior caso deixaria a primeira resposta um pouco mais lenta, mas o valor calculado sempre seria o correto — nunca "trava" por causa disso. Testado local (Docker), que nem passa perto da Vercel
+- [x] `src/lib/timer.ts`: `buscarEstadoDoTimer` agora chama `avancarNiveisVencidos` antes de responder — se o nível atual já esgotou o tempo (e o Timer tá rodando, não pausado nem encerrado), avança sozinho, inclusive vários níveis de uma vez se ninguém deu um GET por um tempo (app fechado, sem ninguém olhando), carregando o tempo excedente pro novo nível em vez de descartar
+- [x] Como o GET do Timer é público (qualquer visitante com a página aberta faz polling a cada 3s — ticket 14), o avanço acontece sozinho assim que **qualquer um** (não só o Organizador) tiver a tela aberta — não depende de nenhum processo em segundo plano, funciona igual em serverless
+- [x] Trava de concorrência: leitura sem lock primeiro (maioria dos polls não estourou o tempo, não precisa nem abrir transação); só quando parece ter estourado é que confirma e grava com `FOR UPDATE`, evitando dois pollers concorrentes avançarem o mesmo nível duas vezes
+- [x] O aviso sonoro (`avisarMudancaDeNivel`/beep Web Audio) **já existia** e já reagia a qualquer mudança de `nivel` entre polls — não precisou de nenhuma mudança no client: agora que o nível muda sozinho, o beep dispara sozinho também
+- [x] Verificado via manipulação direta do Timer de teste (Docker local) + CDP: nível pula sozinho ao esgotar o tempo; múltiplos níveis pulados de uma vez quando o atraso é grande (ex: 45min de atraso com níveis de 20min pulou 2 níveis, carregando os 5min restantes pro nível novo); parado no último nível não quebra (fica em 0:00, sem próximo nível); Timer pausado **não** avança sozinho (comportamento correto — pausar preserva a posição); `AudioContext` criado automaticamente no momento exato da virada, confirmando que o beep dispara sem clique manual
+- [x] `npm test` (50/50), lint e `tsc --noEmit` limpos
+
+**Nota sobre notificação (fora do escopo daqui):** o beep atual só toca com a aba/app aberto e em primeiro plano — não é uma notificação push de verdade (não teria como avisar com o celular bloqueado ou o app em segundo plano). Implementar isso exigiria infraestrutura nova (service worker com push subscription, chaves VAPID, endpoint de push) — decisão de escopo separada, não incluída aqui.

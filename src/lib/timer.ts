@@ -109,12 +109,21 @@ function montarEstado(
   };
 }
 
-/** Estado atual do Timer — usado tanto por quem controla quanto por quem só assiste. */
+/**
+ * Estado atual do Timer — usado tanto por quem controla quanto por quem só
+ * assiste. Antes de responder, "recupera o atraso": se o nível corrente já
+ * esgotou o tempo (ninguém clicou "Pular Nível" ainda), avança sozinho —
+ * não existe processo rodando em segundo plano (não dá em serverless), então
+ * cada GET, de qualquer visitante (não só o Organizador), é a oportunidade
+ * de recalcular e, se for o caso, persistir a virada de nível.
+ */
 export async function buscarEstadoDoTimer(
   partidaId: number,
 ): Promise<EstadoDoTimer | null> {
   const contexto = await obterContexto(partidaId);
   if (!contexto) return null;
+
+  await avancarNiveisVencidos(partidaId, contexto.estruturaDeBlinds);
 
   const { rows } = await db.query<LinhaTimer>(
     `SELECT nivel, rodando, encerrado, inicio_do_nivel, segundos_decorridos
@@ -123,6 +132,74 @@ export async function buscarEstadoDoTimer(
   );
 
   return montarEstado(partidaId, rows[0], contexto.estruturaDeBlinds);
+}
+
+/**
+ * Avança o nível do Timer sozinho quando o tempo do nível atual já
+ * esgotou — sem isso, `segundosRestantes` só ficava travado em 0 pra
+ * sempre esperando alguém clicar "Pular Nível" manualmente. Cobre também
+ * "sumiu" por mais de um nível de uma vez (app fechado, ninguém olhando)
+ * avançando quantos níveis forem necessários de uma vez.
+ *
+ * Leitura sem lock primeiro: a grande maioria dos polls (Timer pausado,
+ * ou ainda dentro do tempo do nível) não precisa nem abrir transação.
+ * Só quando parece ter estourado é que confirma e grava com `FOR UPDATE`
+ * (mesma técnica de trava usada em todo o resto do Timer), pra não ter
+ * dois pollers concorrentes avançando o mesmo nível duas vezes.
+ */
+async function avancarNiveisVencidos(
+  partidaId: number,
+  estruturaDeBlinds: NivelDeBlind[],
+): Promise<void> {
+  if (estruturaDeBlinds.length < 2) return; // sem "próximo nível" possível
+
+  const { rows: pre } = await db.query<LinhaTimer>(
+    `SELECT nivel, rodando, encerrado, inicio_do_nivel, segundos_decorridos
+     FROM timers_de_partida WHERE partida_id = $1`,
+    [partidaId],
+  );
+  const antes = pre[0];
+  if (!antes || !antes.rodando || antes.encerrado || !antes.inicio_do_nivel) return;
+  const duracaoDoNivelAtual = (estruturaDeBlinds[antes.nivel]?.duracaoMinutos ?? 0) * 60;
+  const decorridoEstimado =
+    antes.segundos_decorridos +
+    Math.max(0, Math.floor((Date.now() - new Date(antes.inicio_do_nivel).getTime()) / 1000));
+  if (decorridoEstimado < duracaoDoNivelAtual) return;
+
+  await withTransaction(async (client) => {
+    const { rows } = await client.query<LinhaTimer>(
+      `SELECT nivel, rodando, encerrado, inicio_do_nivel, segundos_decorridos
+       FROM timers_de_partida WHERE partida_id = $1 FOR UPDATE`,
+      [partidaId],
+    );
+    const linha = rows[0];
+    if (!linha || !linha.rodando || linha.encerrado || !linha.inicio_do_nivel) return;
+
+    let nivel = linha.nivel;
+    let segundosDecorridos =
+      linha.segundos_decorridos +
+      Math.max(0, Math.floor((Date.now() - new Date(linha.inicio_do_nivel).getTime()) / 1000));
+
+    let avancou = false;
+    while (nivel + 1 < estruturaDeBlinds.length) {
+      const duracao = (estruturaDeBlinds[nivel]?.duracaoMinutos ?? 0) * 60;
+      if (segundosDecorridos < duracao) break;
+      segundosDecorridos -= duracao;
+      nivel += 1;
+      avancou = true;
+    }
+    if (!avancou) return;
+
+    // `segundosDecorridos` aqui é o que "sobrou" já dentro do novo nível
+    // (ex: passou 30s do fim do nível anterior quando ninguém tava vendo)
+    // — carrega isso pro novo nível em vez de zerar, senão perde tempo real.
+    await client.query(
+      `UPDATE timers_de_partida
+       SET nivel = $2, inicio_do_nivel = now() - ($3 * interval '1 second'), segundos_decorridos = 0
+       WHERE partida_id = $1`,
+      [partidaId, nivel, segundosDecorridos],
+    );
+  });
 }
 
 /**
