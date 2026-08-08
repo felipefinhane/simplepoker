@@ -29,21 +29,24 @@ export function BotaoNotificacao({
     ? "text-on-primary/70 hover:bg-white/10"
     : "text-on-surface-variant hover:bg-surface-container-high";
 
-  if (suporte === "precisa-instalar-no-ios") {
+  if (suporte === "precisa-instalar-no-ios" || suporte === "ios-desatualizado") {
+    const dica =
+      suporte === "precisa-instalar-no-ios"
+        ? "Pra receber notificação quando o blind mudar, instale o app na Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início)."
+        : "Notificação push exige iOS 16.4 ou mais novo — atualize o iPhone em Ajustes → Geral → Atualização de Software.";
     return (
       <div className={`relative ${className}`}>
         <button
           type="button"
           onClick={() => setMostrarDicaIos((atual) => !atual)}
-          aria-label="Notificação indisponível — instale o app primeiro"
+          aria-label="Notificação indisponível — toque para saber por quê"
           className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${corInativa}`}
         >
           <span className="material-symbols-outlined text-[20px]">notifications_off</span>
         </button>
         {mostrarDicaIos && (
           <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-outline-variant bg-surface-container-high p-3 text-label-sm text-on-surface shadow-lg">
-            Pra receber notificação quando o blind mudar, instale o app na Tela de Início primeiro
-            (Compartilhar → Adicionar à Tela de Início).
+            {dica}
           </div>
         )}
       </div>

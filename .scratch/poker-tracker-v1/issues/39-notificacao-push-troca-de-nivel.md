@@ -18,3 +18,12 @@
 - [x] `npm test` (50/50), `npm run test:integration` (78/78, incluindo os 20 do Timer — sem regressão nas mudanças do ticket 36/37), lint, `tsc --noEmit` e `next build` (produção) limpos
 
 **Não verificado por mim (precisa de teste no dispositivo real):** entrega de fato da notificação — som, aparência, funcionamento com o app em segundo plano/celular bloqueado — em iPhone e Android reais. Ambiente sandboxed/headless não reproduz a experiência final de notificação do SO. Depois de instalar o app de novo (o service worker mudou) e ativar o sino na tela do Timer, testar de verdade numa Partida em andamento.
+
+## Correção — sino não aparecia no iPhone
+
+Organizador testou e o sino simplesmente não aparecia (nada, nem o ícone desabilitado). Causa: `detectarSuporte` checava "o navegador suporta push?" **antes** de checar "é iOS sem estar instalado?" — no Safari do iOS, `window.PushManager` só existe dentro do app instalado (a API nem é exposta numa aba comum), então qualquer iPhone testando pelo Safari solto caía direto em `"sem-suporte"` (botão escondido) em vez de `"precisa-instalar-no-ios"` (ícone desabilitado com a dica de instalação).
+
+- [x] Reordenado: iOS é checado primeiro — `"precisa-instalar-no-ios"` (não instalado) → `"ios-desatualizado"` (instalado, mas iOS < 16.4, sem `PushManager` mesmo assim) → `"suportado"`. Só cai em `"sem-suporte"` (escondido) fora do iOS
+- [x] Novo estado `"ios-desatualizado"` com mensagem própria (pedindo pra atualizar o iOS), reaproveitando o mesmo ícone/popover de dica do "precisa instalar"
+- [x] Verificado via CDP simulando o Safari do iOS de verdade (user agent + `PushManager` removido de `window`, do jeito que a Apple realmente expõe/esconde a API): os três estados (não instalado / instalado mas desatualizado / suportado) renderizam certo agora
+- [x] `npm test` (50/50, local e dentro do Docker), lint e `tsc --noEmit` limpos

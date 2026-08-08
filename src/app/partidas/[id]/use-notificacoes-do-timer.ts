@@ -9,6 +9,7 @@ export type SuporteDeNotificacao =
   | "verificando"
   | "sem-suporte"
   | "precisa-instalar-no-ios"
+  | "ios-desatualizado"
   | "suportado";
 
 /** applicationServerKey do PushManager exige `Uint8Array`, não a string base64url da chave. */
@@ -43,10 +44,22 @@ function inscreverEmNada() {
 }
 
 function detectarSuporte(): SuporteDeNotificacao {
-  const semSuporteDoNavegador =
-    !("serviceWorker" in navigator) || !("PushManager" in window) || !CHAVE_PUBLICA_VAPID;
-  if (semSuporteDoNavegador) return "sem-suporte";
-  if (ehIos() && !estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
+  if (!CHAVE_PUBLICA_VAPID) return "sem-suporte";
+
+  // No iOS, `PushManager` só existe em `window` dentro do app instalado
+  // (a API nem é exposta numa aba comum do Safari) — checar isso ANTES do
+  // teste genérico de suporte é essencial: senão, todo iPhone que ainda
+  // não instalou cai direto em "sem-suporte" (botão some sem explicação)
+  // em vez de "precisa-instalar-no-ios" (mostra a dica de instalação).
+  if (ehIos()) {
+    if (!estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return "ios-desatualizado"; // instalado, mas iOS < 16.4
+    }
+    return "suportado";
+  }
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "sem-suporte";
   return "suportado";
 }
 
