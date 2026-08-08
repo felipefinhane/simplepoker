@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BotaoNotificacao } from "./botao-notificacao";
 import { BotaoPlayPause } from "./botao-play-pause";
 import { MENSAGEM_SEM_ESTRUTURA_DE_BLINDS, formatarTempo, useTimer } from "./use-timer";
 
@@ -37,6 +38,13 @@ export function TimerClient({
     >
       <div className="pointer-events-none absolute -right-4 -top-4 select-none text-9xl font-black text-on-primary opacity-10">
         ♠
+      </div>
+
+      {/* Linha própria, fora do Link abaixo — botão dentro de link
+          aninhado é HTML inválido e faria o toque navegar pra tela cheia
+          sem querer. */}
+      <div className="z-20 flex w-full justify-end">
+        <BotaoNotificacao partidaId={partidaId} sobreFundoEscuro />
       </div>
 
       <Link href={`/partidas/${partidaId}/timer`} className="z-10 flex flex-col items-center">

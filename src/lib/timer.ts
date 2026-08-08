@@ -3,6 +3,7 @@ import type { PoolClient } from "pg";
 import { db, withTransaction } from "@/lib/db";
 import { buscarPartidaPorId } from "@/lib/partidas";
 import { TemporadaEncerradaError, buscarTemporadaPorId } from "@/lib/temporadas";
+import { notificarMudancaDeNivel } from "@/lib/push";
 import type { NivelDeBlind } from "@/domain/types";
 
 /** Estado do Timer de blinds de uma Partida. Ver CONTEXT.md (Timer). */
@@ -166,14 +167,14 @@ async function avancarNiveisVencidos(
     Math.max(0, Math.floor((Date.now() - new Date(antes.inicio_do_nivel).getTime()) / 1000));
   if (decorridoEstimado < duracaoDoNivelAtual) return;
 
-  await withTransaction(async (client) => {
+  const nivelDepoisDeAvancar = await withTransaction(async (client) => {
     const { rows } = await client.query<LinhaTimer>(
       `SELECT nivel, rodando, encerrado, inicio_do_nivel, segundos_decorridos
        FROM timers_de_partida WHERE partida_id = $1 FOR UPDATE`,
       [partidaId],
     );
     const linha = rows[0];
-    if (!linha || !linha.rodando || linha.encerrado || !linha.inicio_do_nivel) return;
+    if (!linha || !linha.rodando || linha.encerrado || !linha.inicio_do_nivel) return null;
 
     let nivel = linha.nivel;
     let segundosDecorridos =
@@ -188,7 +189,7 @@ async function avancarNiveisVencidos(
       nivel += 1;
       avancou = true;
     }
-    if (!avancou) return;
+    if (!avancou) return null;
 
     // `segundosDecorridos` aqui é o que "sobrou" já dentro do novo nível
     // (ex: passou 30s do fim do nível anterior quando ninguém tava vendo)
@@ -199,7 +200,17 @@ async function avancarNiveisVencidos(
        WHERE partida_id = $1`,
       [partidaId, nivel, segundosDecorridos],
     );
+    return nivel;
   });
+
+  // Fora da transação (chamada de rede) — ver comentário em
+  // `notificarMudancaDeNivel`.
+  const nivelAtual = nivelDepoisDeAvancar !== null ? estruturaDeBlinds[nivelDepoisDeAvancar] : undefined;
+  if (nivelDepoisDeAvancar !== null && nivelAtual) {
+    notificarMudancaDeNivel(partidaId, nivelDepoisDeAvancar, estruturaDeBlinds.length, nivelAtual).catch(
+      (error) => console.error("Falha ao notificar troca de nível", error),
+    );
+  }
 }
 
 /**
@@ -318,6 +329,8 @@ async function mudarNivel(
   delta: 1 | -1,
   erroDeLimite: () => Error,
 ): Promise<EstadoDoTimer> {
+  let novoNivel = 0;
+
   await withTransaction(async (client) => {
     await travarTemporada(client, contexto.temporadaId);
 
@@ -332,7 +345,7 @@ async function mudarNivel(
     if (!rows[0]) throw new TimerNaoIniciadoError();
     if (rows[0].encerrado) throw new TimerEncerradoError();
 
-    const novoNivel = rows[0].nivel + delta;
+    novoNivel = rows[0].nivel + delta;
     if (novoNivel < 0 || novoNivel >= contexto.estruturaDeBlinds.length) {
       throw erroDeLimite();
     }
@@ -346,6 +359,20 @@ async function mudarNivel(
       [partidaId, novoNivel],
     );
   });
+
+  // Fora da transação (chamada de rede) — ver comentário em
+  // `notificarMudancaDeNivel`. `mudarNivel` cobre tanto pular quanto
+  // voltar de nível: os dois avisam, igual o beep local já faz pra
+  // qualquer troca (ver use-timer.ts).
+  const nivelAtual = contexto.estruturaDeBlinds[novoNivel];
+  if (nivelAtual) {
+    notificarMudancaDeNivel(
+      partidaId,
+      novoNivel,
+      contexto.estruturaDeBlinds.length,
+      nivelAtual,
+    ).catch((error) => console.error("Falha ao notificar troca de nível", error));
+  }
 
   return (await buscarEstadoDoTimer(partidaId))!;
 }

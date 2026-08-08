@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BotaoNotificacao } from "../botao-notificacao";
 import { BotaoPlayPause } from "../botao-play-pause";
 import { MENSAGEM_SEM_ESTRUTURA_DE_BLINDS, formatarTempo, useTimer } from "../use-timer";
 
@@ -64,13 +65,16 @@ export function TimerTelaCheiaClient({
       className="flex min-h-[calc(100vh-56px)] flex-col items-center justify-center gap-section-margin px-container-padding py-10 text-center"
       style={{ background: "radial-gradient(circle at center, #0f5132 0%, #0a0b0c 100%)" }}
     >
-      <Link
-        href={`/partidas/${partidaId}`}
-        className="flex items-center gap-1 self-start text-on-surface-variant hover:text-primary"
-      >
-        <span className="material-symbols-outlined">arrow_back</span>
-        Voltar
-      </Link>
+      <div className="flex w-full items-center justify-between">
+        <Link
+          href={`/partidas/${partidaId}`}
+          className="flex items-center gap-1 text-on-surface-variant hover:text-primary"
+        >
+          <span className="material-symbols-outlined">arrow_back</span>
+          Voltar
+        </Link>
+        <BotaoNotificacao partidaId={partidaId} />
+      </div>
 
       <div className="inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-surface/40 px-6 py-2 backdrop-blur-sm">
         <span className="h-2 w-2 rounded-full bg-secondary" />
