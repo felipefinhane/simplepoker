@@ -51,9 +51,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const organizador = await getOrganizadorLogado();
 
   return (
+    // suppressHydrationWarning aqui e no <body> (abaixo): extensões de
+    // navegador (Grammarly, QuillBot — visto em produção como
+    // `data-qb-installed`, etc.) injetam atributos tanto no <html> quanto
+    // no <body> antes do React hidratar — não é mismatch real do app, é o
+    // padrão recomendado pra essa classe específica de aviso
+    // (https://react.dev/link/hydration-mismatch).
     <html
       lang="pt-BR"
       className={`${hankenGrotesk.variable} ${jetBrainsMono.variable}`}
+      suppressHydrationWarning
     >
       <head>
         {/* Ícones usados nas telas (ver AppShell e as páginas) — não tem
@@ -69,11 +76,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             em tela cheia (sem barra de endereço) a partir da Tela de Início. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      {/* suppressHydrationWarning só neste nível: extensões de navegador
-          (Grammarly, etc.) injetam atributos no <body> antes do React
-          hidratar (`data-gr-ext-installed`, `data-new-gr-c-s-check-loaded`)
-          — não é um mismatch real do app, é o padrão recomendado pra essa
-          classe específica de aviso (https://react.dev/link/hydration-mismatch). */}
+      {/* ver comentário no <html> acima */}
       <body suppressHydrationWarning>
         <RegisterServiceWorker />
         <AppShell organizador={organizador}>{children}</AppShell>
