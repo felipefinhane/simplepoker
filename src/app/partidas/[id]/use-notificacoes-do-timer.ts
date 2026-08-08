@@ -43,32 +43,23 @@ function inscreverEmNada() {
   return () => {};
 }
 
-function detectarSuporte(): SuporteDeNotificacao {
-  if (!CHAVE_PUBLICA_VAPID) return "sem-suporte";
-
-  // No iOS, `PushManager` só existe em `window` dentro do app instalado
-  // (a API nem é exposta numa aba comum do Safari) — checar isso ANTES do
-  // teste genérico de suporte é essencial: senão, todo iPhone que ainda
-  // não instalou cai direto em "sem-suporte" (botão some sem explicação)
-  // em vez de "precisa-instalar-no-ios" (mostra a dica de instalação).
-  if (ehIos()) {
-    if (!estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      // "standalone" bateu, mas falta a API mesmo assim. iOS < 16.4 é uma
-      // causa possível, mas não a única — um ícone adicionado à Tela de
-      // Início antes de alguma correção de manifest/metadata (ex: tickets
-      // 19-22) pode nunca ter sido reconhecido pela Apple como um "app
-      // instalado" de verdade pra fins de push, mesmo em iOS mais novo.
-      // Reinstalar o ícone costuma resolver — ver mensagem em
-      // `botao-notificacao.tsx`, que não afirma "seu iOS é antigo" sem
-      // certeza.
-      return "ios-desatualizado";
-    }
-    return "suportado";
-  }
-
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "sem-suporte";
-  return "suportado";
+/**
+ * Só a parte barata e síncrona: "sem chave VAPID" e "iOS sem estar
+ * instalado" dá pra saber na hora. O resto ("o navegador tem PushManager
+ * de verdade?") fica pra depois — ver `useNotificacoesDoTimer` — porque
+ * checar `"PushManager" in window` direto, cedo demais (antes do service
+ * worker terminar de registrar), deu falso-negativo real no Safari do
+ * iOS: um app recém-instalado em iOS 16.4+ (confirmado pelo Organizador)
+ * apontava "sem suporte" mesmo sendo capaz — o Safari parece só expor a
+ * API depois que o service worker fica pronto, diferente do Chrome (onde
+ * já existe global desde o início). Checar via `"pushManager" in
+ * registro` (na registration, depois de `serviceWorker.ready`) é a forma
+ * correta e recomendada pela spec — não depende dessa corrida.
+ */
+function detectarSuportePrecoce(): SuporteDeNotificacao {
+  if (!CHAVE_PUBLICA_VAPID || !("serviceWorker" in navigator)) return "sem-suporte";
+  if (ehIos() && !estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
+  return "verificando"; // ainda precisa confirmar depois que o service worker ficar pronto
 }
 
 /**
@@ -79,29 +70,40 @@ function detectarSuporte(): SuporteDeNotificacao {
  * o botão.
  */
 export function useNotificacoesDoTimer(partidaId: number) {
-  // `useSyncExternalStore` (não `useEffect` + `setState`) porque é um
-  // valor de fora do React (capacidade do navegador) que nunca muda depois
-  // de montado — `getServerSnapshot` mantém a SSR segura ("verificando",
-  // sem tocar em `navigator`/`window` no servidor).
-  const suporte = useSyncExternalStore(
+  // `useSyncExternalStore` (não `useEffect` + `setState`) porque a parte
+  // síncrona é um valor de fora do React (capacidade do navegador) que
+  // nunca muda depois de montado — `getServerSnapshot` mantém a SSR
+  // segura ("verificando", sem tocar em `navigator`/`window` no servidor).
+  const suportePrecoce = useSyncExternalStore(
     inscreverEmNada,
-    detectarSuporte,
+    detectarSuportePrecoce,
     () => "verificando" as SuporteDeNotificacao,
   );
+  const [suporteConfirmado, setSuporteConfirmado] = useState<SuporteDeNotificacao | null>(null);
+  // "sem-suporte"/"precisa-instalar-no-ios" já são finais (não passam por
+  // aqui); só "verificando" espera a confirmação assíncrona abaixo.
+  const suporte = suporteConfirmado ?? suportePrecoce;
+
   const [inscrito, setInscrito] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (suporte !== "suportado") return;
+    if (suportePrecoce !== "verificando") return;
 
     navigator.serviceWorker.ready
-      .then((registro) => registro.pushManager.getSubscription())
-      .then((assinatura) => setInscrito(assinatura !== null))
+      .then((registro) => {
+        const suportado = "pushManager" in registro;
+        setSuporteConfirmado(suportado ? "suportado" : ehIos() ? "ios-desatualizado" : "sem-suporte");
+        if (!suportado) return;
+        return registro.pushManager
+          .getSubscription()
+          .then((assinatura) => setInscrito(assinatura !== null));
+      })
       .catch(() => {
-        // Sem service worker pronto ainda — segue como "não inscrito".
+        setSuporteConfirmado(ehIos() ? "ios-desatualizado" : "sem-suporte");
       });
-  }, [suporte]);
+  }, [suportePrecoce]);
 
   async function ativar() {
     if (!CHAVE_PUBLICA_VAPID) return;

@@ -34,3 +34,15 @@ Organizador confirmou estar em iOS 16.4+ e mesmo assim viu essa mensagem — a s
 
 - [x] Mensagem trocada pra não afirmar "seu iOS é antigo" sem certeza — orienta primeiro remover e reinstalar o ícone da Tela de Início (causa mais provável nesse caso), e só depois verificar a versão do iOS como possibilidade secundária
 - [x] `npm test` (50/50), lint e `tsc --noEmit` limpos
+
+## Correção — causa raiz real: falso-negativo na detecção (não era o dispositivo)
+
+Organizador confirmou: já tinha reinstalado o ícone (não era isso) e não existe nenhuma entrada em Ajustes → Notificações pro app — ou seja, o navegador nunca sequer chegou a pedir permissão, porque o app achava (errado) que não tinha suporte.
+
+Causa raiz: `detectarSuporte` checava `"PushManager" in window` — o construtor global — de forma síncrona, logo no primeiro render. No Safari do iOS, parece que esse global só fica disponível depois que o service worker termina de registrar (diferente do Chrome, onde já existe desde o início) — checar cedo demais dava falso "sem suporte" mesmo num app recém-instalado em iOS novo, e como o app nunca tentava `Notification.requestPermission()`, o iOS nunca criava a entrada em Ajustes (consistente com o que o Organizador viu).
+
+- [x] Trocado pra checar via `"pushManager" in registro` (a propriedade da *registration* do service worker, não o global de `window`) — forma correta segundo a spec, e só é checada depois de `navigator.serviceWorker.ready` resolver, sem a corrida
+- [x] `detectarSuportePrecoce` (síncrono, via `useSyncExternalStore`) agora só decide o que dá pra saber na hora sem esperar nada: "sem chave VAPID" e "iOS sem estar instalado". Tudo mais vira `"verificando"` até a checagem assíncrona (dentro de um `useEffect`, `setState` só no `.then()` — sem repetir o erro de lint do início) confirmar `"suportado"`/`"ios-desatualizado"`/`"sem-suporte"`
+- [x] Verificado via CDP simulando exatamente o cenário problemático (iOS + standalone + `window.PushManager` deletado, como o Safari real pareceria antes do service worker ficar pronto): o botão real de ativar aparece agora, em vez do ícone de indisponível — confirma que não depende mais do global cedo demais
+- [x] Reconferido que os outros dois estados (não instalado / genuinamente sem suporte) continuam corretos
+- [x] `npm test` (50/50), lint e `tsc --noEmit` limpos
