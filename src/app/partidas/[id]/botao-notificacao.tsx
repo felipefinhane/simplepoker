@@ -33,7 +33,7 @@ export function BotaoNotificacao({
     const dica =
       suporte === "precisa-instalar-no-ios"
         ? "Pra receber notificação quando o blind mudar, instale o app na Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início)."
-        : "Notificação push exige iOS 16.4 ou mais novo — atualize o iPhone em Ajustes → Geral → Atualização de Software.";
+        : "Notificação indisponível neste ícone instalado. Tente remover o app da Tela de Início e adicionar de novo (Compartilhar → Adicionar à Tela de Início) — se mesmo assim não funcionar, confirme que o iOS está na versão 16.4 ou mais novo (Ajustes → Geral → Sobre).";
     return (
       <div className={`relative ${className}`}>
         <button

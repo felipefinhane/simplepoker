@@ -27,3 +27,10 @@ Organizador testou e o sino simplesmente não aparecia (nada, nem o ícone desab
 - [x] Novo estado `"ios-desatualizado"` com mensagem própria (pedindo pra atualizar o iOS), reaproveitando o mesmo ícone/popover de dica do "precisa instalar"
 - [x] Verificado via CDP simulando o Safari do iOS de verdade (user agent + `PushManager` removido de `window`, do jeito que a Apple realmente expõe/esconde a API): os três estados (não instalado / instalado mas desatualizado / suportado) renderizam certo agora
 - [x] `npm test` (50/50, local e dentro do Docker), lint e `tsc --noEmit` limpos
+
+## Correção — mensagem "precisa de iOS 16.4" enganosa
+
+Organizador confirmou estar em iOS 16.4+ e mesmo assim viu essa mensagem — a suposição "sem `PushManager` mesmo `standalone` = iOS desatualizado" não é a única causa possível: um ícone adicionado à Tela de Início *antes* de alguma correção de manifest/metadata (ex: tickets 19-22) pode nunca ter sido reconhecido pela Apple como app instalado de verdade pra fins de push, mesmo num iOS novo.
+
+- [x] Mensagem trocada pra não afirmar "seu iOS é antigo" sem certeza — orienta primeiro remover e reinstalar o ícone da Tela de Início (causa mais provável nesse caso), e só depois verificar a versão do iOS como possibilidade secundária
+- [x] `npm test` (50/50), lint e `tsc --noEmit` limpos

@@ -54,7 +54,15 @@ function detectarSuporte(): SuporteDeNotificacao {
   if (ehIos()) {
     if (!estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      return "ios-desatualizado"; // instalado, mas iOS < 16.4
+      // "standalone" bateu, mas falta a API mesmo assim. iOS < 16.4 é uma
+      // causa possível, mas não a única — um ícone adicionado à Tela de
+      // Início antes de alguma correção de manifest/metadata (ex: tickets
+      // 19-22) pode nunca ter sido reconhecido pela Apple como um "app
+      // instalado" de verdade pra fins de push, mesmo em iOS mais novo.
+      // Reinstalar o ícone costuma resolver — ver mensagem em
+      // `botao-notificacao.tsx`, que não afirma "seu iOS é antigo" sem
+      // certeza.
+      return "ios-desatualizado";
     }
     return "suportado";
   }
