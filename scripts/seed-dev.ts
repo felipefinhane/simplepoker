@@ -16,14 +16,46 @@
  */
 import { db } from "../src/lib/db";
 import { criarJogador, listarJogadores } from "../src/lib/jogadores";
-import {
-  buscarTemporadaAberta,
-  criarTemporada,
-  obterParametrosPadraoParaNovaTemporada,
-  serializarParametros,
-} from "../src/lib/temporadas";
+import { buscarTemporadaAberta, criarTemporada } from "../src/lib/temporadas";
 import { hashSenha, senhaInicialParaTelefone } from "../src/lib/auth/senha";
 import { normalizarTelefone } from "../src/lib/auth/telefone";
+
+// Os mesmos Parâmetros da Temporada aberta em produção (conferido
+// direto no banco, ticket 32) — Tabela de Pontos e multiplicadores já
+// batiam com o padrão (`obterParametrosPadraoParaNovaTemporada`), mas
+// Estrutura de Blinds e Fichas Iniciais ficavam vazias nesse fallback;
+// aqui usa os valores reais pra testar Timer/Fichas igual produção.
+const PARAMETROS_IGUAIS_A_PRODUCAO = {
+  tabelaDePontos: [
+    [1, 25], [2, 18], [3, 15], [4, 12], [5, 10], [6, 8], [7, 6],
+    [8, 4], [9, 2], [10, 1], [11, 1], [12, 1], [13, 1], [14, 1], [15, 1],
+  ] as [number, number][],
+  valorDaPartida: 10,
+  multiplicadorPremiacaoPrimeiro: 2,
+  multiplicadorPremiacaoSegundo: 1,
+  estruturaDeBlinds: [
+    { blindPequeno: 50, blindGrande: 100, duracaoMinutos: 20 },
+    { blindPequeno: 100, blindGrande: 200, duracaoMinutos: 20 },
+    { blindPequeno: 150, blindGrande: 300, duracaoMinutos: 20 },
+    { blindPequeno: 200, blindGrande: 400, duracaoMinutos: 20 },
+    { blindPequeno: 300, blindGrande: 600, duracaoMinutos: 20 },
+    { blindPequeno: 500, blindGrande: 1000, duracaoMinutos: 20 },
+    { blindPequeno: 750, blindGrande: 1500, duracaoMinutos: 20 },
+    { blindPequeno: 1000, blindGrande: 2000, duracaoMinutos: 20 },
+    { blindPequeno: 1500, blindGrande: 3000, duracaoMinutos: 20 },
+    { blindPequeno: 2000, blindGrande: 4000, duracaoMinutos: 20 },
+    { blindPequeno: 2500, blindGrande: 5000, duracaoMinutos: 20 },
+    { blindPequeno: 3000, blindGrande: 6000, duracaoMinutos: 20 },
+    { blindPequeno: 5000, blindGrande: 10000, duracaoMinutos: 20 },
+  ],
+  fichasIniciais: [
+    { valor: 100, quantidade: 10 },
+    { valor: 50, quantidade: 10 },
+    { valor: 1000, quantidade: 3 },
+    { valor: 5000, quantidade: 1 },
+    { valor: 500, quantidade: 1 },
+  ],
+};
 
 const ORGANIZADOR_NOME = process.env.ORGANIZADOR_NOME ?? "Organizador Teste";
 const ORGANIZADOR_TELEFONE = process.env.ORGANIZADOR_TELEFONE ?? "11999998888";
@@ -76,9 +108,8 @@ async function main() {
 
   const jaAberta = await buscarTemporadaAberta();
   if (!jaAberta) {
-    const parametros = await obterParametrosPadraoParaNovaTemporada();
-    await criarTemporada(serializarParametros(parametros));
-    console.log("[seed:dev] Temporada aberta criada com os Parâmetros padrão.");
+    await criarTemporada(PARAMETROS_IGUAIS_A_PRODUCAO);
+    console.log("[seed:dev] Temporada aberta criada com os mesmos Parâmetros de produção.");
   }
 
   console.log("[seed:dev] Pronto — já dá pra testar Nova Partida.");
