@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listarTemporadasEncerradas } from "@/lib/temporadas";
 import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
+import { calcularSaldoDaTemporada } from "@/lib/caixa";
 
 function formatarData(data: string): string {
   const [ano, mes, dia] = data.slice(0, 10).split("-");
@@ -34,13 +35,12 @@ export default async function HistoricoPage() {
       const partidas = (await listarPartidasDaTemporada(temporada.id)).filter(
         (p) => p.finalizada,
       );
-      const rankings = await calcularRankingsDaTemporada(temporada.id);
+      const [rankings, saldoDoCaixa] = await Promise.all([
+        calcularRankingsDaTemporada(temporada.id),
+        calcularSaldoDaTemporada(temporada.id),
+      ]);
       const campeao = rankings?.rankingDePontuacao[0]?.nome ?? null;
-      const totalArrecadado = partidas.reduce(
-        (soma, p) => soma + p.lancamentos.length * temporada.parametros.valorDaPartida,
-        0,
-      );
-      return { temporada, totalPartidas: partidas.length, campeao, totalArrecadado };
+      return { temporada, totalPartidas: partidas.length, campeao, saldoDoCaixa };
     }),
   );
 
@@ -59,7 +59,7 @@ export default async function HistoricoPage() {
         </p>
       ) : (
         <div className="flex flex-col gap-stack-gap">
-          {cards.map(({ temporada, totalPartidas, campeao, totalArrecadado }) => (
+          {cards.map(({ temporada, totalPartidas, campeao, saldoDoCaixa }) => (
             <Link
               key={temporada.id}
               href={`/historico/${temporada.id}`}
@@ -122,10 +122,10 @@ export default async function HistoricoPage() {
                   </div>
                   <div className="text-right sm:text-left">
                     <p className="mb-1 text-label-sm uppercase tracking-wider text-on-surface-variant">
-                      Arrecadado
+                      Saldo do Caixa
                     </p>
                     <p className="text-lg text-label-data text-secondary">
-                      R$ {formatarValor(totalArrecadado)}
+                      R$ {formatarValor(saldoDoCaixa)}
                     </p>
                   </div>
                 </div>

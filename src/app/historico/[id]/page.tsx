@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { buscarTemporadaPorId } from "@/lib/temporadas";
 import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
+import { calcularSaldoDaTemporada } from "@/lib/caixa";
 import { RankingsDaTemporada } from "@/components/rankings-da-temporada";
 
 function formatarData(data: string): string {
@@ -42,14 +43,12 @@ export default async function TemporadaHistoricaPage({
     notFound();
   }
 
-  const rankings = await calcularRankingsDaTemporada(temporada.id);
-  const partidas = (await listarPartidasDaTemporada(temporada.id)).filter(
-    (p) => p.finalizada,
-  );
-  const totalArrecadado = partidas.reduce(
-    (soma, p) => soma + p.lancamentos.length * temporada.parametros.valorDaPartida,
-    0,
-  );
+  const [rankings, partidasDaTemporada, saldoDoCaixa] = await Promise.all([
+    calcularRankingsDaTemporada(temporada.id),
+    listarPartidasDaTemporada(temporada.id),
+    calcularSaldoDaTemporada(temporada.id),
+  ]);
+  const partidas = partidasDaTemporada.filter((p) => p.finalizada);
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-section-margin px-container-padding py-6">
@@ -100,10 +99,10 @@ export default async function TemporadaHistoricaPage({
         <div className="flex flex-col items-center gap-2 rounded-lg border border-surface-container-high bg-surface-container-low p-4 text-center">
           <span className="material-symbols-outlined text-primary">payments</span>
           <span className="text-label-sm uppercase tracking-wider text-on-surface-variant">
-            Total Arrecadado
+            Saldo do Caixa
           </span>
           <span className="text-body-lg font-bold text-secondary">
-            R$ {formatarValor(totalArrecadado)}
+            R$ {formatarValor(saldoDoCaixa)}
           </span>
         </div>
       </div>
