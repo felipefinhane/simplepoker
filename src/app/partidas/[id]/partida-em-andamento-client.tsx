@@ -126,6 +126,19 @@ function LinhaDeLancamento({
         </label>
 
         <div className="ml-auto flex items-center gap-2">
+          {!estaAtivo && (
+            <button
+              type="button"
+              onClick={() =>
+                onAtualizar(lancamento.jogadorId, { posicao: null, eliminadoPorJogadorId: null })
+              }
+              className="flex items-center gap-1 rounded border border-outline-variant px-3 py-2 text-label-sm text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+            >
+              <span className="material-symbols-outlined text-[16px]">undo</span>
+              Desfazer
+            </button>
+          )}
+
           {estaAtivo &&
             (saindo ? (
               <>
