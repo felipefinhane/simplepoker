@@ -258,10 +258,15 @@ export async function listarTemporadas(): Promise<Temporada[]> {
   return rows.map(linhaParaTemporada);
 }
 
-/** Temporadas encerradas, mais recentes primeiro — a lista de `/historico`. */
+/**
+ * Temporadas encerradas, mais recentes primeiro — a lista de `/historico`.
+ * Ordena por `data_inicio` (não por `id`): a ordem de criação da linha no
+ * banco não bate com a ordem cronológica real quando Temporadas antigas
+ * são importadas fora de ordem (ver tickets 24/27/28).
+ */
 export async function listarTemporadasEncerradas(): Promise<Temporada[]> {
   const { rows } = await db.query<LinhaTemporada>(
-    `SELECT * FROM temporadas WHERE aberta = false ORDER BY id DESC`,
+    `SELECT * FROM temporadas WHERE aberta = false ORDER BY data_inicio DESC`,
   );
   return rows.map(linhaParaTemporada);
 }

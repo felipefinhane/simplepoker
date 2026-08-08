@@ -53,6 +53,10 @@ export default async function HistoricoPage() {
         </p>
       </div>
 
+      <Link href="/" className="text-center text-primary hover:underline">
+        ← Temporada atual
+      </Link>
+
       {cards.length === 0 ? (
         <p className="rounded-lg border border-dashed border-outline-variant p-6 text-center text-body-md text-on-surface-variant">
           Nenhuma Temporada encerrada ainda.
