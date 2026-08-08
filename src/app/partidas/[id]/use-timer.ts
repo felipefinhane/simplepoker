@@ -6,14 +6,62 @@ import type { EstadoDoTimer } from "@/lib/timer";
 const INTERVALO_DE_POLLING_MS = 3000;
 const DURACAO_DO_ALERTA_VISUAL_MS = 4000;
 
+function obterAudioContextClasse() {
+  return (
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  );
+}
+
+// Reaproveitado entre trocas de nível — criar um `AudioContext` novo a cada
+// beep (como era antes) nasce "suspended" em iOS/Android sempre que a
+// chamada não vem de dentro de um toque do usuário, e a troca de nível
+// quase sempre acontece sozinha (polling em segundo plano, ver ticket 36),
+// nunca de um clique — o som falhava calado, sem erro nenhum. Em vez
+// disso, um único contexto é criado (ou destravado) no primeiro toque na
+// página (ver `destravarAudioNoProximoToque`) e reaproveitado depois.
+let audioContextCompartilhado: AudioContext | null = null;
+
+function obterOuCriarAudioContextCompartilhado(): AudioContext | null {
+  const AudioContextClasse = obterAudioContextClasse();
+  if (!AudioContextClasse) return null;
+  if (!audioContextCompartilhado) {
+    audioContextCompartilhado = new AudioContextClasse();
+  }
+  return audioContextCompartilhado;
+}
+
+/**
+ * Destrava o áudio assim que o usuário tocar em qualquer lugar da página —
+ * só funciona uma vez de verdade (as seguintes são só o `.resume()` de
+ * segurança, caso o navegador tenha suspendido o contexto de novo ao
+ * colocar a aba em segundo plano). Chamado uma vez por instância do
+ * `useTimer` (ver efeito abaixo).
+ */
+function destravarAudioNoProximoToque() {
+  function destravar() {
+    const contexto = obterOuCriarAudioContextCompartilhado();
+    contexto?.resume().catch(() => {
+      // Sem suporte, ou o navegador recusou — segue sem som.
+    });
+  }
+  window.addEventListener("pointerdown", destravar);
+  window.addEventListener("keydown", destravar);
+  return () => {
+    window.removeEventListener("pointerdown", destravar);
+    window.removeEventListener("keydown", destravar);
+  };
+}
+
 /** Beep curto via Web Audio — sem depender de nenhum arquivo de áudio. */
 function tocarAlerta() {
   try {
-    const AudioContextClasse =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
-    const contexto = new AudioContextClasse();
+    const contexto = obterOuCriarAudioContextCompartilhado();
+    if (!contexto) return;
+    // Se o navegador suspendeu de novo (ex: aba voltou do segundo plano),
+    // isso não pede um gesto novo — só reativa um contexto já destravado
+    // antes por um toque real.
+    void contexto.resume();
     const oscilador = contexto.createOscillator();
     oscilador.type = "sine";
     oscilador.frequency.value = 880;
@@ -51,6 +99,8 @@ export function useTimer(partidaId: number) {
     setNivelMudouAgora(true);
     setTimeout(() => setNivelMudouAgora(false), DURACAO_DO_ALERTA_VISUAL_MS);
   }
+
+  useEffect(() => destravarAudioNoProximoToque(), []);
 
   useEffect(() => {
     let cancelado = false;
