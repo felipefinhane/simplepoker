@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOrganizadorLogado } from "@/lib/auth/organizador";
-import { listarPartidas } from "@/lib/partidas";
+import { listarPartidasDaTemporada } from "@/lib/partidas";
+import { buscarTemporadaAberta } from "@/lib/temporadas";
 
 function formatarData(data: string): string {
   const [ano, mes, dia] = data.split("-");
@@ -25,12 +26,17 @@ function formatarData(data: string): string {
  * Lista de Partidas — pública (qualquer visitante vê data, participantes e
  * status), com "+ Nova Partida" visível só pro Organizador logado. Mesmo
  * padrão dual-modo do detalhe de uma Partida (`/partidas/[id]`, ticket 07).
+ *
+ * Só mostra as Partidas da Temporada **aberta** — Partidas de Temporadas
+ * encerradas (ex: a importada no ticket 24) só aparecem dentro do
+ * Histórico daquela Temporada (`/historico/[id]`), não misturadas aqui.
  */
 export default async function PartidasPage() {
-  const [organizador, partidas] = await Promise.all([
+  const [organizador, temporadaAberta] = await Promise.all([
     getOrganizadorLogado(),
-    listarPartidas(),
+    buscarTemporadaAberta(),
   ]);
+  const partidas = temporadaAberta ? await listarPartidasDaTemporada(temporadaAberta.id) : [];
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-section-margin px-container-padding py-6">
@@ -41,7 +47,7 @@ export default async function PartidasPage() {
             Histórico e Partidas em andamento da Temporada atual.
           </p>
         </div>
-        {organizador && (
+        {organizador && temporadaAberta && (
           <Link
             href="/partidas/nova"
             className="flex h-touch-target-min shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-label-sm font-bold uppercase tracking-wider text-on-primary transition-colors hover:bg-primary-fixed"
@@ -51,6 +57,17 @@ export default async function PartidasPage() {
           </Link>
         )}
       </div>
+
+      {!temporadaAberta && (
+        <p className="rounded-lg border border-dashed border-outline-variant p-6 text-center text-body-md text-on-surface-variant">
+          Nenhuma Temporada aberta no momento. Partidas de Temporadas
+          encerradas ficam no{" "}
+          <Link href="/historico" className="text-primary hover:underline">
+            Histórico
+          </Link>
+          .
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {partidas.map((partida) => (
@@ -87,7 +104,7 @@ export default async function PartidasPage() {
           </Link>
         ))}
 
-        {partidas.length === 0 && (
+        {temporadaAberta && partidas.length === 0 && (
           <p className="rounded-lg border border-dashed border-outline-variant p-6 text-center text-body-md text-on-surface-variant">
             Nenhuma Partida ainda.
           </p>
