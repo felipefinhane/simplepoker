@@ -68,22 +68,32 @@ export default async function TemporadaHistoricaPage({
         </p>
       </div>
 
-      {/* Aviso só pra Temporada 2026.1, importada de `POKER 1_2026.xlsx`
-          (ticket 24) — a planilha não registrava quem eliminou quem, só o
-          total de Almas por Jogador/Partida, então o "eliminado por" de
-          cada Lançamento aqui foi reconstruído (consistente nos totais,
-          mas não é a ordem real daquela noite). Checagem por data em vez
-          de um campo novo no banco — é histórico, não deve se repetir. */}
-      {temporada.dataInicio.startsWith("2026-02-03") && (
+      {/* Aviso só pras Temporadas importadas de planilhas antigas (tickets
+          24/27) — nenhuma delas registrava quem eliminou quem, só o total
+          de Almas por Jogador/Partida, então o "eliminado por" de cada
+          Lançamento foi reconstruído (não é a ordem real daquela noite).
+          Em algumas Partidas mais antigas um 1º/2º colocado ficou
+          registrado com menos Almas do que a própria (o app sempre credita
+          +1 pra quem termina em 1º/2º — regra fixa, não dá pra desligar
+          só pra essas Partidas), então o total de Pontos/Almas de alguns
+          Jogadores fica 1-2 acima do que a planilha original tinha.
+          Checagem por data em vez de um campo novo no banco — é
+          histórico, a lista não deve crescer fora desses imports pontuais. */}
+      {["2026-02-03", "2025-08-05", "2024-08-06"].some((d) =>
+        temporada.dataInicio.startsWith(d),
+      ) && (
         <div className="flex items-start gap-3 rounded-lg border border-secondary/30 bg-secondary-container/10 p-4 text-body-md text-on-surface-variant">
           <span className="material-symbols-outlined mt-0.5 text-secondary">info</span>
           <p>
-            Temporada importada de uma planilha antiga. Posições e Pontos são
-            os reais. A planilha não registrava quem eliminou quem — só o
-            total de Almas de cada Jogador — então o &quot;eliminado por&quot;
-            de cada Partida aqui foi <strong>reconstruído</strong> pra
-            fechar os totais de Almas certinhos; não reflete a ordem real
-            das eliminações daquela noite.
+            Temporada importada de uma planilha antiga. Posições são as
+            reais. A planilha não registrava quem eliminou quem — só o
+            total de Almas de cada Jogador — então o &quot;eliminado
+            por&quot; de cada Partida aqui foi <strong>reconstruído</strong>{" "}
+            pra fechar os totais de Almas o mais próximo possível do
+            original; não reflete a ordem real das eliminações daquela
+            noite, e em Partidas antigas mais inconsistentes o total de
+            Pontos/Almas de algum Jogador pode ficar 1 ou 2 acima do
+            registrado na planilha.
           </p>
         </div>
       )}
