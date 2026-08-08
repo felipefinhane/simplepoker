@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -12,7 +12,8 @@
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "migrate": "node-pg-migrate",
     "migrate:up": "node-pg-migrate up",
-    "seed:organizador": "tsx scripts/seed-organizador.ts"
+    "seed:organizador": "tsx scripts/seed-organizador.ts",
+    "seed:dev": "tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

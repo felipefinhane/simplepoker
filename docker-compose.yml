@@ -34,9 +34,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Aplica as migrations pendentes antes de subir o dev server, pra um
-    # `docker-compose up` sempre partir de um banco com o schema em dia.
-    command: sh -c "npm run migrate:up && npm run dev -- -H 0.0.0.0"
+    # Aplica as migrations pendentes e popula o banco com dados de teste
+    # (Organizador, elenco de Jogadores, Temporada aberta — ver
+    # scripts/seed-dev.ts, é idempotente, só faz algo em banco vazio)
+    # antes de subir o dev server, pra um `docker compose up` sempre
+    # partir de um banco com o schema em dia e já dar pra testar.
+    command: sh -c "npm run migrate:up && npm run seed:dev && npm run dev -- -H 0.0.0.0"
 
 volumes:
   db-data:
