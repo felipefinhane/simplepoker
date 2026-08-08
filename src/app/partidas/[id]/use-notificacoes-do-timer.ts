@@ -5,12 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 /** Preenchido no build (ver next.config.ts / Vercel) — chave pública VAPID. */
 const CHAVE_PUBLICA_VAPID = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-export type SuporteDeNotificacao =
-  | "verificando"
-  | "sem-suporte"
-  | "precisa-instalar-no-ios"
-  | "ios-desatualizado"
-  | "suportado";
+export type SuporteDeNotificacao = "verificando" | "sem-suporte" | "precisa-instalar-no-ios" | "suportado";
 
 /** applicationServerKey do PushManager exige `Uint8Array`, não a string base64url da chave. */
 function base64UrlParaUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
@@ -44,22 +39,25 @@ function inscreverEmNada() {
 }
 
 /**
- * Só a parte barata e síncrona: "sem chave VAPID" e "iOS sem estar
- * instalado" dá pra saber na hora. O resto ("o navegador tem PushManager
- * de verdade?") fica pra depois — ver `useNotificacoesDoTimer` — porque
- * checar `"PushManager" in window` direto, cedo demais (antes do service
- * worker terminar de registrar), deu falso-negativo real no Safari do
- * iOS: um app recém-instalado em iOS 16.4+ (confirmado pelo Organizador)
- * apontava "sem suporte" mesmo sendo capaz — o Safari parece só expor a
- * API depois que o service worker fica pronto, diferente do Chrome (onde
- * já existe global desde o início). Checar via `"pushManager" in
- * registro` (na registration, depois de `serviceWorker.ready`) é a forma
- * correta e recomendada pela spec — não depende dessa corrida.
+ * Decisão só com checagens síncronas e confiáveis — nada que dependa de
+ * esperar o service worker "ficar pronto" antes de decidir se mostra o
+ * botão. Duas tentativas anteriores tentaram confirmar `PushManager` de
+ * antemão (via `"PushManager" in window`, depois via `"pushManager" in
+ * registro` depois de `serviceWorker.ready`) e as duas deram problema real
+ * no Safari do iOS: a primeira, falso-negativo (checava cedo demais); a
+ * segunda, o botão sumia de vez quando `serviceWorker.ready` nunca
+ * resolvia (visto num app recém-reinstalado, sem nenhum motivo aparente).
+ * Mais simples e mais robusto: no iOS, se estiver instalado, mostra o
+ * botão — é exatamente o que a Apple documenta como suficiente (iOS
+ * 16.4+, standalone). Se `PushManager` realmente não existir, o próprio
+ * clique em "Ativar" (`ativar()` abaixo) vai falhar e mostrar um erro
+ * claro, em vez do botão simplesmente nunca aparecer.
  */
-function detectarSuportePrecoce(): SuporteDeNotificacao {
+function detectarSuporte(): SuporteDeNotificacao {
   if (!CHAVE_PUBLICA_VAPID || !("serviceWorker" in navigator)) return "sem-suporte";
-  if (ehIos() && !estaInstaladoComoPwa()) return "precisa-instalar-no-ios";
-  return "verificando"; // ainda precisa confirmar depois que o service worker ficar pronto
+  if (ehIos()) return estaInstaladoComoPwa() ? "suportado" : "precisa-instalar-no-ios";
+  if (!("PushManager" in window)) return "sem-suporte";
+  return "suportado";
 }
 
 /**
@@ -70,40 +68,31 @@ function detectarSuportePrecoce(): SuporteDeNotificacao {
  * o botão.
  */
 export function useNotificacoesDoTimer(partidaId: number) {
-  // `useSyncExternalStore` (não `useEffect` + `setState`) porque a parte
-  // síncrona é um valor de fora do React (capacidade do navegador) que
-  // nunca muda depois de montado — `getServerSnapshot` mantém a SSR
-  // segura ("verificando", sem tocar em `navigator`/`window` no servidor).
-  const suportePrecoce = useSyncExternalStore(
+  // `useSyncExternalStore` (não `useEffect` + `setState`) porque é um
+  // valor de fora do React (capacidade do navegador) que nunca muda depois
+  // de montado — `getServerSnapshot` mantém a SSR segura ("verificando",
+  // sem tocar em `navigator`/`window` no servidor).
+  const suporte = useSyncExternalStore(
     inscreverEmNada,
-    detectarSuportePrecoce,
+    detectarSuporte,
     () => "verificando" as SuporteDeNotificacao,
   );
-  const [suporteConfirmado, setSuporteConfirmado] = useState<SuporteDeNotificacao | null>(null);
-  // "sem-suporte"/"precisa-instalar-no-ios" já são finais (não passam por
-  // aqui); só "verificando" espera a confirmação assíncrona abaixo.
-  const suporte = suporteConfirmado ?? suportePrecoce;
-
   const [inscrito, setInscrito] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    if (suportePrecoce !== "verificando") return;
+    if (suporte !== "suportado") return;
 
+    // Só refina o rótulo do botão (inscrito ou não) — não decide se ele
+    // aparece, então não tem problema se demorar ou nunca resolver.
     navigator.serviceWorker.ready
-      .then((registro) => {
-        const suportado = "pushManager" in registro;
-        setSuporteConfirmado(suportado ? "suportado" : ehIos() ? "ios-desatualizado" : "sem-suporte");
-        if (!suportado) return;
-        return registro.pushManager
-          .getSubscription()
-          .then((assinatura) => setInscrito(assinatura !== null));
-      })
+      .then((registro) => registro.pushManager?.getSubscription())
+      .then((assinatura) => setInscrito(assinatura != null))
       .catch(() => {
-        setSuporteConfirmado(ehIos() ? "ios-desatualizado" : "sem-suporte");
+        // Sem service worker pronto ainda — segue como "não inscrito".
       });
-  }, [suportePrecoce]);
+  }, [suporte]);
 
   async function ativar() {
     if (!CHAVE_PUBLICA_VAPID) return;
@@ -117,6 +106,17 @@ export function useNotificacoesDoTimer(partidaId: number) {
       }
 
       const registro = await navigator.serviceWorker.ready;
+      if (!registro.pushManager) {
+        // Só descoberto aqui, na hora de tentar — ver comentário em
+        // `detectarSuporte`. No iOS, ausência real disso costuma ser
+        // versão anterior a 16.4 (às vezes precisa reinstalar o ícone
+        // depois de atualizar o iOS, não só atualizar o sistema).
+        setErro(
+          "Notificação indisponível neste app. No iOS, exige 16.4 ou mais novo — se já estiver atualizado, tente remover e reinstalar o ícone da Tela de Início.",
+        );
+        return;
+      }
+
       const assinatura = await registro.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlParaUint8Array(CHAVE_PUBLICA_VAPID),

@@ -46,3 +46,17 @@ Causa raiz: `detectarSuporte` checava `"PushManager" in window` — o construtor
 - [x] Verificado via CDP simulando exatamente o cenário problemático (iOS + standalone + `window.PushManager` deletado, como o Safari real pareceria antes do service worker ficar pronto): o botão real de ativar aparece agora, em vez do ícone de indisponível — confirma que não depende mais do global cedo demais
 - [x] Reconferido que os outros dois estados (não instalado / genuinamente sem suporte) continuam corretos
 - [x] `npm test` (50/50), lint e `tsc --noEmit` limpos
+
+## Correção — sino sumiu de novo depois de reinstalar (regressão da correção anterior)
+
+Organizador removeu e reinstalou o ícone (de novo) e dessa vez o sino nem apareceu — nenhum ícone, nem o desabilitado. Causa: a correção anterior trocou pra esperar `navigator.serviceWorker.ready` resolver antes de decidir se mostra o botão — mas nesse app recém-reinstalado (registrando o service worker pela primeira vez de novo, do zero), essa promessa aparentemente nunca resolveu, deixando o estado travado em `"verificando"` pra sempre (que corretamente não mostra nada — só que "pra sempre" não é uma opção boa).
+
+Terceira tentativa, mais simples e sem depender de nenhuma promessa: no iOS, se `estaInstaladoComoPwa()` bater, mostra o botão direto — é exatamente o que a Apple documenta como suficiente, sem tentar confirmar `PushManager` de antemão. Se de fato não tiver suporte, isso só aparece na hora de clicar "Ativar" (erro claro, com dica), não mais como o botão inteiro sumindo sem explicação.
+
+- [x] `detectarSuporte` volta a ser 100% síncrono — sem `useEffect`/promessa nenhuma decidindo se o botão aparece. iOS instalado → `"suportado"` direto
+- [x] Estado `"ios-desatualizado"` removido (não tinha mais como chegar nele de forma confiável) — se `registro.pushManager` realmente não existir, `ativar()` mostra um erro específico na hora, num popover visível (não só `title`, que não aparece em toque no celular)
+- [x] Verificado via CDP simulando o pior caso — `navigator.serviceWorker.ready` que nunca resolve (uma `Promise` que nunca resolve nem rejeita, imitando exatamente a suspeita) — e o botão aparece normalmente mesmo assim
+- [x] Reconferido: instalado normal, não instalado, e o fluxo completo de inscrição (Chrome/Android) continuam funcionando
+- [x] `npm test` (50/50, local e Docker), lint e `tsc --noEmit` limpos
+
+**Nota sobre testar push localmente no Android:** confirmado que instalar via `https://poker.finhane.com` funciona (e o beep já funciona local). Pra testar push de verdade no Docker local pelo Android, o Chrome também exige "origem segura" pra Service Worker/Notificação — não só pra instalabilidade. Solução: no Chrome do Android, abrir `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, ativar e adicionar `http://<IP-da-rede-local>:3000` (ex: `http://192.168.15.7:3000`) — depois disso o site local passa a ser tratado como seguro o bastante pra Service Worker/Push funcionarem normalmente.

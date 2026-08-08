@@ -21,6 +21,8 @@ export function BotaoNotificacao({
   className?: string;
 }) {
   const { suporte, inscrito, carregando, erro, alternar } = useNotificacoesDoTimer(partidaId);
+  // `title` não aparece em toque no celular (sem hover) — a dica "instale
+  // o app primeiro" (iOS) usa esse popover pra ficar visível de verdade.
   const [mostrarDicaIos, setMostrarDicaIos] = useState(false);
 
   if (suporte === "verificando" || suporte === "sem-suporte") return null;
@@ -29,11 +31,7 @@ export function BotaoNotificacao({
     ? "text-on-primary/70 hover:bg-white/10"
     : "text-on-surface-variant hover:bg-surface-container-high";
 
-  if (suporte === "precisa-instalar-no-ios" || suporte === "ios-desatualizado") {
-    const dica =
-      suporte === "precisa-instalar-no-ios"
-        ? "Pra receber notificação quando o blind mudar, instale o app na Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início)."
-        : "Notificação indisponível neste ícone instalado. Tente remover o app da Tela de Início e adicionar de novo (Compartilhar → Adicionar à Tela de Início) — se mesmo assim não funcionar, confirme que o iOS está na versão 16.4 ou mais novo (Ajustes → Geral → Sobre).";
+  if (suporte === "precisa-instalar-no-ios") {
     return (
       <div className={`relative ${className}`}>
         <button
@@ -46,7 +44,8 @@ export function BotaoNotificacao({
         </button>
         {mostrarDicaIos && (
           <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-outline-variant bg-surface-container-high p-3 text-label-sm text-on-surface shadow-lg">
-            {dica}
+            Pra receber notificação quando o blind mudar, instale o app na Tela de Início primeiro
+            (Compartilhar → Adicionar à Tela de Início).
           </div>
         )}
       </div>
@@ -54,19 +53,28 @@ export function BotaoNotificacao({
   }
 
   return (
-    <button
-      type="button"
-      onClick={alternar}
-      disabled={carregando}
-      aria-label={inscrito ? "Desativar notificação de blind" : "Ativar notificação de blind"}
-      title={erro ?? undefined}
-      className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-        inscrito ? "bg-secondary/20 text-secondary" : corInativa
-      } ${className}`}
-    >
-      <span className="material-symbols-outlined text-[20px]">
-        {inscrito ? "notifications_active" : "notifications"}
-      </span>
-    </button>
+    <div className={`relative ${className}`}>
+      <button
+        type="button"
+        onClick={alternar}
+        disabled={carregando}
+        aria-label={inscrito ? "Desativar notificação de blind" : "Ativar notificação de blind"}
+        className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+          inscrito ? "bg-secondary/20 text-secondary" : corInativa
+        }`}
+      >
+        <span className="material-symbols-outlined text-[20px]">
+          {inscrito ? "notifications_active" : erro ? "error" : "notifications"}
+        </span>
+      </button>
+      {/* `erro` só existe depois de uma tentativa real (clique em
+          "Ativar") — mostra na hora, sem precisar de outro toque pra
+          revelar (diferente da dica do iOS acima, que é preventiva). */}
+      {erro && (
+        <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-error/40 bg-surface-container-high p-3 text-label-sm text-on-surface shadow-lg">
+          {erro}
+        </div>
+      )}
+    </div>
   );
 }
