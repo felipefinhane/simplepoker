@@ -69,7 +69,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             em tela cheia (sem barra de endereço) a partir da Tela de Início. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body>
+      {/* suppressHydrationWarning só neste nível: extensões de navegador
+          (Grammarly, etc.) injetam atributos no <body> antes do React
+          hidratar (`data-gr-ext-installed`, `data-new-gr-c-s-check-loaded`)
+          — não é um mismatch real do app, é o padrão recomendado pra essa
+          classe específica de aviso (https://react.dev/link/hydration-mismatch). */}
+      <body suppressHydrationWarning>
         <RegisterServiceWorker />
         <AppShell organizador={organizador}>{children}</AppShell>
       </body>
