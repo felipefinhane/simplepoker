@@ -182,17 +182,20 @@ body {
  * botão não dava feedback nenhum (parecia que o app "não fez nada" até o
  * resultado aparecer, mesmo quando já tinha registrado o toque). Efeito
  * de toque global em vez de repetir isso em cada botão do app: qualquer
- * `<button>` habilitado encolhe um pouco no instante do toque, com
- * `:disabled` explicitamente sem efeito (não fica parecendo clicável
- * enquanto já está desabilitado/carregando).
+ * `<button>` habilitado (ou link — `a[href]`, cobre a navegação inteira:
+ * bottom nav, cards de Partida, "Ver mais", etc, ver ticket 42) encolhe
+ * um pouco no instante do toque. `:disabled` explicitamente sem efeito
+ * (não fica parecendo clicável enquanto já está desabilitado/carregando).
  */
-button:not(:disabled) {
+button:not(:disabled),
+a[href] {
   transition:
     transform 100ms ease,
     opacity 100ms ease;
 }
 
-button:not(:disabled):active {
+button:not(:disabled):active,
+a[href]:active {
   transform: scale(0.96);
   opacity: 0.85;
 }
