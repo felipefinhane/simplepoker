@@ -33,7 +33,7 @@ afterAll(async () => {
 
 describe("criarTemporada / buscarTemporadaAberta (contra Postgres real)", () => {
   it("cria uma Temporada aberta com os parâmetros informados", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     expect(temporada.aberta).toBe(true);
     expect(temporada.dataFim).toBeNull();
@@ -42,9 +42,9 @@ describe("criarTemporada / buscarTemporadaAberta (contra Postgres real)", () => 
   });
 
   it("recusa criar uma segunda Temporada enquanto a primeira está aberta", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
 
-    await expect(criarTemporada(PARAMETROS_DE_TESTE)).rejects.toThrow(
+    await expect(criarTemporada(PARAMETROS_DE_TESTE, null)).rejects.toThrow(
       JaExisteTemporadaAbertaError,
     );
   });
@@ -55,8 +55,8 @@ describe("criarTemporada / buscarTemporadaAberta (contra Postgres real)", () => 
     // terminar, então quem trava é o índice único do banco — e é isso que
     // este teste confirma que vira o erro de domínio certo, não um 500.
     const resultados = await Promise.allSettled([
-      criarTemporada(PARAMETROS_DE_TESTE),
-      criarTemporada(PARAMETROS_DE_TESTE),
+      criarTemporada(PARAMETROS_DE_TESTE, null),
+      criarTemporada(PARAMETROS_DE_TESTE, null),
     ]);
 
     const sucessos = resultados.filter((r) => r.status === "fulfilled");
@@ -76,37 +76,37 @@ describe("criarTemporada / buscarTemporadaAberta (contra Postgres real)", () => 
 
 describe("editarParametrosDaTemporada / encerrarTemporada (contra Postgres real)", () => {
   it("edita os parâmetros de uma Temporada aberta", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     const editada = await editarParametrosDaTemporada(temporada.id, {
       ...PARAMETROS_DE_TESTE,
       valorDaPartida: 20,
-    });
+    }, null);
 
     expect(editada?.parametros.valorDaPartida).toBe(20);
   });
 
   it("encerra a Temporada e passa a recusar novas edições", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
-    const encerrada = await encerrarTemporada(temporada.id);
+    const encerrada = await encerrarTemporada(temporada.id, null);
     expect(encerrada?.aberta).toBe(false);
     expect(encerrada?.dataFim).not.toBeNull();
 
     await expect(
-      editarParametrosDaTemporada(temporada.id, PARAMETROS_DE_TESTE),
+      editarParametrosDaTemporada(temporada.id, PARAMETROS_DE_TESTE, null),
     ).rejects.toThrow(TemporadaEncerradaError);
 
-    await expect(encerrarTemporada(temporada.id)).rejects.toThrow(
+    await expect(encerrarTemporada(temporada.id, null)).rejects.toThrow(
       TemporadaEncerradaError,
     );
   });
 
   it("depois de encerrar, uma nova Temporada pode ser criada", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
-    await encerrarTemporada(temporada.id);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await encerrarTemporada(temporada.id, null);
 
-    const nova = await criarTemporada(PARAMETROS_DE_TESTE);
+    const nova = await criarTemporada(PARAMETROS_DE_TESTE, null);
     expect(nova.aberta).toBe(true);
     expect(nova.id).not.toBe(temporada.id);
   });
@@ -123,7 +123,7 @@ describe("obterParametrosPadraoParaNovaTemporada (contra Postgres real)", () => 
   });
 
   it("com uma Temporada existente, usa os parâmetros dela como padrão", async () => {
-    await criarTemporada({ ...PARAMETROS_DE_TESTE, valorDaPartida: 15 });
+    await criarTemporada({ ...PARAMETROS_DE_TESTE, valorDaPartida: 15 }, null);
 
     const padrao = await obterParametrosPadraoParaNovaTemporada();
     expect(padrao.valorDaPartida).toBe(15);

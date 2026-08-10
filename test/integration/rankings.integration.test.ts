@@ -37,9 +37,9 @@ async function finalizarComResultado(
     await atualizarLancamento(partidaId, entrada.jogadorId, {
       posicao: entrada.posicao,
       eliminadoPorJogadorId: entrada.eliminadoPorJogadorId ?? null,
-    });
+    }, null);
   }
-  return finalizarPartida(partidaId);
+  return finalizarPartida(partidaId, null);
 }
 
 beforeEach(limpar);
@@ -54,16 +54,16 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
   });
 
   it("agrega Lançamentos de várias Partidas finalizadas e ordena os dois rankings", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const jogadores = await Promise.all(
-      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
+      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
     );
     const [ana, beto, caio, dede, elis] = jogadores.map((j) => j.id);
 
     // Partida 1: Ana 1º (elimina Caio), Beto 2º, Caio 3º, Dedé 4º, Elis 5º.
     // Almas: Ana = 1(própria)+1(matou Caio) = 2. Beto = 1(própria) = 1.
     // Pontos: Ana=25+2=27, Beto=18+1=19.
-    const partida1 = await criarPartida("2026-01-01", [ana, beto, caio, dede, elis]);
+    const partida1 = await criarPartida("2026-01-01", [ana, beto, caio, dede, elis], null);
     await finalizarComResultado(partida1.id, [
       { jogadorId: ana, posicao: 1 },
       { jogadorId: beto, posicao: 2 },
@@ -75,7 +75,7 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
     // Partida 2: Beto 1º (elimina Caio e Dedé), Ana 2º, Caio 3º, Dedé 4º, Elis 5º.
     // Almas: Beto = 1+2 = 3. Ana = 1.
     // Pontos: Beto=25+3=28, Ana=18+1=19.
-    const partida2 = await criarPartida("2026-01-08", [ana, beto, caio, dede, elis]);
+    const partida2 = await criarPartida("2026-01-08", [ana, beto, caio, dede, elis], null);
     await finalizarComResultado(partida2.id, [
       { jogadorId: beto, posicao: 1 },
       { jogadorId: ana, posicao: 2 },
@@ -106,17 +106,17 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
   });
 
   it("nunca mistura dois Jogadores com o mesmo nome", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const homonimos = await Promise.all([
-      criarJogador("Zeca de Teste"),
-      criarJogador("Zeca de Teste"),
+      criarJogador("Zeca de Teste", null),
+      criarJogador("Zeca de Teste", null),
     ]);
     const outros = await Promise.all(
-      ["Ana", "Beto", "Caio"].map((n) => criarJogador(`${n} de Teste`)),
+      ["Ana", "Beto", "Caio"].map((n) => criarJogador(`${n} de Teste`, null)),
     );
     const ids = [...homonimos.map((j) => j.id), ...outros.map((j) => j.id)];
 
-    const partida = await criarPartida("2026-01-01", ids);
+    const partida = await criarPartida("2026-01-01", ids, null);
     await finalizarComResultado(
       partida.id,
       ids.map((id, i) => ({ jogadorId: id, posicao: i + 1 })),
@@ -131,16 +131,16 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
   });
 
   it("ignora Partidas ainda não finalizadas (mesmo com posições parciais preenchidas)", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const jogadores = await Promise.all(
-      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
+      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
     );
     const ids = jogadores.map((j) => j.id);
 
-    const partida = await criarPartida("2026-01-01", ids);
+    const partida = await criarPartida("2026-01-01", ids, null);
     // Preenche todo mundo, mas NÃO finaliza.
     for (const [i, id] of ids.entries()) {
-      await atualizarLancamento(partida.id, id, { posicao: i + 1 });
+      await atualizarLancamento(partida.id, id, { posicao: i + 1 }, null);
     }
 
     const rankings = await calcularRankingsDaTemporada(temporada.id);

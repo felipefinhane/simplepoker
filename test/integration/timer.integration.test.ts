@@ -46,13 +46,14 @@ async function limpar() {
 }
 
 async function criarPartidaDeTeste(estruturaDeBlinds = ESTRUTURA_DE_BLINDS_DE_TESTE) {
-  const temporada = await criarTemporada(parametros(estruturaDeBlinds));
+  const temporada = await criarTemporada(parametros(estruturaDeBlinds), null);
   const jogadores = await Promise.all(
-    ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
+    ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
   );
   const partida = await criarPartida(
     "2026-01-01",
     jogadores.map((j) => j.id),
+    null,
   );
   return { temporada, partida };
 }
@@ -264,7 +265,7 @@ describe("controle do Timer numa Temporada encerrada (contra Postgres real)", ()
     const { temporada, partida } = await criarPartidaDeTeste();
     await iniciarTimer(partida.id);
     await pularNivel(partida.id); // nível 1, pra poder testar voltarNivel também
-    await encerrarTemporada(temporada.id);
+    await encerrarTemporada(temporada.id, null);
 
     await expect(iniciarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
     await expect(pausarTimer(partida.id)).rejects.toThrow(TemporadaEncerradaError);
@@ -282,7 +283,7 @@ describe("controle do Timer numa Temporada encerrada (contra Postgres real)", ()
     // `SELECT ... FOR UPDATE` em pausarTimer decide quem "ganha".
     const [resultadoDoPause, resultadoDoEncerramento] = await Promise.allSettled([
       pausarTimer(partida.id),
-      encerrarTemporada(temporada.id),
+      encerrarTemporada(temporada.id, null),
     ]);
 
     expect(resultadoDoEncerramento.status).toBe("fulfilled");

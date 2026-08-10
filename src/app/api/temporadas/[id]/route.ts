@@ -23,7 +23,11 @@ export async function PATCH(
   const parametros = await request.json().catch(() => null);
 
   try {
-    const temporada = await editarParametrosDaTemporada(id, parametros);
+    const temporada = await editarParametrosDaTemporada(
+      id,
+      parametros,
+      organizadorOuResposta.id,
+    );
     if (!temporada) {
       return NextResponse.json(
         { error: "Temporada não encontrada." },

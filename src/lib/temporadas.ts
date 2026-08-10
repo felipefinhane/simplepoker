@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { tabelaDePontosPadrao } from "@/domain/tabela-de-pontos";
+import { registrarEvento } from "@/lib/auditoria";
 import type {
   FichaInicial,
   NivelDeBlind,
@@ -304,6 +305,7 @@ function ehViolacaoDeUnicidade(error: unknown): boolean {
  */
 export async function criarTemporada(
   parametrosBrutos: unknown,
+  atorId: number | null,
 ): Promise<Temporada> {
   const jaAberta = await buscarTemporadaAberta();
   if (jaAberta) throw new JaExisteTemporadaAbertaError();
@@ -316,11 +318,11 @@ export async function criarTemporada(
       `INSERT INTO temporadas (
          tabela_de_pontos, valor_da_partida,
          multiplicador_premiacao_primeiro, multiplicador_premiacao_segundo,
-         estrutura_de_blinds, fichas_iniciais
+         estrutura_de_blinds, fichas_iniciais, criado_por_jogador_id
        )
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      parametrosParaColunas(parametros),
+      [...parametrosParaColunas(parametros), atorId],
     ));
   } catch (error) {
     if (ehViolacaoDeUnicidade(error)) throw new JaExisteTemporadaAbertaError();
@@ -337,6 +339,7 @@ export async function criarTemporada(
 export async function editarParametrosDaTemporada(
   id: number,
   parametrosBrutos: unknown,
+  atorId: number | null,
 ): Promise<Temporada | null> {
   const atual = await buscarTemporadaPorId(id);
   if (!atual) return null;
@@ -349,11 +352,23 @@ export async function editarParametrosDaTemporada(
      SET tabela_de_pontos = $2, valor_da_partida = $3,
          multiplicador_premiacao_primeiro = $4,
          multiplicador_premiacao_segundo = $5,
-         estrutura_de_blinds = $6, fichas_iniciais = $7
+         estrutura_de_blinds = $6, fichas_iniciais = $7,
+         atualizado_por_jogador_id = $8, atualizado_em = now()
      WHERE id = $1
      RETURNING *`,
-    [id, ...parametrosParaColunas(parametros)],
+    [id, ...parametrosParaColunas(parametros), atorId],
   );
+
+  // Parâmetros de verdade editados (Tabela de Pontos, Blinds, etc.) — ação
+  // sensível, mexe em como toda a Temporada é calculada. Ver ticket 44.
+  await registrarEvento(null, {
+    jogadorId: atorId,
+    acao: "temporada.parametros_atualizados",
+    entidadeTipo: "temporada",
+    entidadeId: id,
+    dadosAntes: serializarParametros(atual.parametros),
+    dadosDepois: serializarParametros(parametros),
+  });
 
   return linhaParaTemporada(rows[0]);
 }
@@ -362,15 +377,29 @@ export async function editarParametrosDaTemporada(
  * Encerra uma Temporada aberta, congelando seus dados. Retorna null se o
  * id não existir; lança `TemporadaEncerradaError` se já estiver encerrada.
  */
-export async function encerrarTemporada(id: number): Promise<Temporada | null> {
+export async function encerrarTemporada(
+  id: number,
+  atorId: number | null,
+): Promise<Temporada | null> {
   const atual = await buscarTemporadaPorId(id);
   if (!atual) return null;
   if (!atual.aberta) throw new TemporadaEncerradaError();
 
   const { rows } = await db.query<LinhaTemporada>(
-    `UPDATE temporadas SET aberta = false, data_fim = now() WHERE id = $1 RETURNING *`,
-    [id],
+    `UPDATE temporadas
+     SET aberta = false, data_fim = now(),
+         atualizado_por_jogador_id = $2, atualizado_em = now()
+     WHERE id = $1 RETURNING *`,
+    [id, atorId],
   );
+
+  // Irreversível — congela a Temporada de vez. Ver ticket 44.
+  await registrarEvento(null, {
+    jogadorId: atorId,
+    acao: "temporada.encerrada",
+    entidadeTipo: "temporada",
+    entidadeId: id,
+  });
 
   return linhaParaTemporada(rows[0]);
 }

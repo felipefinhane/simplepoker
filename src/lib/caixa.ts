@@ -1,5 +1,6 @@
 import { db, withTransaction } from "@/lib/db";
 import { TemporadaEncerradaError } from "@/lib/temporadas";
+import { registrarEvento } from "@/lib/auditoria";
 
 /** Uma entrada no extrato do Caixa. Ver CONTEXT.md. */
 export interface TransacaoDoCaixa {
@@ -78,6 +79,7 @@ export async function calcularSaldoDaTemporada(
 export async function lancarSaidaManual(
   temporadaId: number,
   dados: { data: string; descricao: string; valor: number },
+  atorId: number | null,
 ): Promise<TransacaoDoCaixa> {
   if (!dados.descricao.trim()) {
     throw new DadosDaSaidaInvalidosError("Informe uma descrição para a saída.");
@@ -106,11 +108,22 @@ export async function lancarSaidaManual(
     }
 
     const { rows } = await client.query<LinhaTransacao>(
-      `INSERT INTO caixa_transacoes (temporada_id, tipo, valor, data, descricao)
-       VALUES ($1, 'saida_manual', $2, $3, $4)
+      `INSERT INTO caixa_transacoes
+         (temporada_id, tipo, valor, data, descricao, criado_por_jogador_id)
+       VALUES ($1, 'saida_manual', $2, $3, $4, $5)
        RETURNING id, tipo, valor, to_char(data, 'YYYY-MM-DD') AS data, partida_id, descricao`,
-      [temporadaId, dados.valor, dados.data, dados.descricao.trim()],
+      [temporadaId, dados.valor, dados.data, dados.descricao.trim(), atorId],
     );
+
+    // Mexe direto no dinheiro do grupo — ação sensível. Ver ticket 44.
+    await registrarEvento(client, {
+      jogadorId: atorId,
+      acao: "caixa.saida_manual_lancada",
+      entidadeTipo: "caixa_transacao",
+      entidadeId: rows[0].id,
+      dadosDepois: { valor: dados.valor, data: dados.data, descricao: dados.descricao.trim() },
+    });
+
     return rows[0];
   });
 

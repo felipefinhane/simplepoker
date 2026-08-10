@@ -22,7 +22,7 @@ export async function POST(
   }
 
   try {
-    const partida = await adicionarParticipante(partidaId, jogadorId);
+    const partida = await adicionarParticipante(partidaId, jogadorId, organizadorOuResposta.id);
     return NextResponse.json({ partida }, { status: 201 });
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

@@ -40,7 +40,7 @@ export async function PATCH(
   const data = typeof body?.data === "string" ? body.data : "";
 
   try {
-    const partida = await editarDataDaPartida(id, data);
+    const partida = await editarDataDaPartida(id, data, organizadorOuResposta.id);
     return NextResponse.json({ partida });
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

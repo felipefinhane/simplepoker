@@ -24,6 +24,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const jogador = await criarJogador(nome);
+  const jogador = await criarJogador(nome, organizadorOuResposta.id);
   return NextResponse.json({ jogador }, { status: 201 });
 }

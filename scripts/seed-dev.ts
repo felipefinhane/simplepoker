@@ -102,13 +102,13 @@ async function main() {
   );
 
   for (const nome of ELENCO) {
-    await criarJogador(nome);
+    await criarJogador(nome, null); // script, sem Organizador logado
   }
   console.log(`[seed:dev] ${ELENCO.length} Jogadores cadastrados: ${ELENCO.join(", ")}.`);
 
   const jaAberta = await buscarTemporadaAberta();
   if (!jaAberta) {
-    await criarTemporada(PARAMETROS_IGUAIS_A_PRODUCAO);
+    await criarTemporada(PARAMETROS_IGUAIS_A_PRODUCAO, null); // script, sem Organizador logado
     console.log("[seed:dev] Temporada aberta criada com os mesmos Parâmetros de produção.");
   }
 

@@ -20,7 +20,7 @@ export async function POST(
   }
 
   try {
-    const temporada = await encerrarTemporada(id);
+    const temporada = await encerrarTemporada(id, organizadorOuResposta.id);
     if (!temporada) {
       return NextResponse.json(
         { error: "Temporada não encontrada." },

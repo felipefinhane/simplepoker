@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const partida = await criarPartida(data, jogadorIds);
+    const partida = await criarPartida(data, jogadorIds, organizadorOuResposta.id);
     return NextResponse.json({ partida }, { status: 201 });
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

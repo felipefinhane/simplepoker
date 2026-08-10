@@ -21,7 +21,12 @@ export async function POST(
     body?.eliminadoPorJogadorId == null ? null : Number(body.eliminadoPorJogadorId);
 
   try {
-    const partida = await marcarSaida(partidaId, jogadorId, eliminadoPorJogadorId);
+    const partida = await marcarSaida(
+      partidaId,
+      jogadorId,
+      eliminadoPorJogadorId,
+      organizadorOuResposta.id,
+    );
     return NextResponse.json({ partida });
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const parametros = await request.json().catch(() => null);
 
   try {
-    const temporada = await criarTemporada(parametros);
+    const temporada = await criarTemporada(parametros, organizadorOuResposta.id);
     return NextResponse.json(
       { temporada: serializarTemporada(temporada) },
       { status: 201 },

@@ -22,7 +22,11 @@ export async function POST(
   const valor = Number(body?.valor);
 
   try {
-    const transacao = await lancarSaidaManual(temporadaId, { data, descricao, valor });
+    const transacao = await lancarSaidaManual(
+      temporadaId,
+      { data, descricao, valor },
+      organizadorOuResposta.id,
+    );
     return NextResponse.json({ transacao }, { status: 201 });
   } catch (error) {
     if (error instanceof TemporadaEncerradaError) {

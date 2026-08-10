@@ -35,7 +35,12 @@ export async function PATCH(
   }
 
   try {
-    const partida = await atualizarLancamento(partidaId, jogadorId, dados);
+    const partida = await atualizarLancamento(
+      partidaId,
+      jogadorId,
+      dados,
+      organizadorOuResposta.id,
+    );
     return NextResponse.json({ partida });
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

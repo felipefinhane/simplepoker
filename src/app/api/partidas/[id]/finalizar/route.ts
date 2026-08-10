@@ -16,7 +16,7 @@ export async function POST(
   }
 
   try {
-    const resultado = await finalizarPartida(partidaId);
+    const resultado = await finalizarPartida(partidaId, organizadorOuResposta.id);
     return NextResponse.json(resultado);
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

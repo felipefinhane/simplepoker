@@ -26,7 +26,7 @@ afterAll(async () => {
 
 describe("criarJogador / listarJogadores (contra Postgres real)", () => {
   it("cria um Jogador com apenas o nome, ativo por padrão, sem ser Organizador", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
 
     expect(jogador).toMatchObject({
       nome: NOMES_DE_TESTE[0],
@@ -36,8 +36,8 @@ describe("criarJogador / listarJogadores (contra Postgres real)", () => {
   });
 
   it("lista os Jogadores cadastrados em ordem alfabética", async () => {
-    await criarJogador(NOMES_DE_TESTE[0]); // "Zeca..."
-    await criarJogador(NOMES_DE_TESTE[1]); // "Ana..."
+    await criarJogador(NOMES_DE_TESTE[0], null); // "Zeca..."
+    await criarJogador(NOMES_DE_TESTE[1], null); // "Ana..."
 
     const jogadores = await listarJogadores();
     const nomes = jogadores.map((j) => j.nome).filter((n) => n.endsWith("de Teste"));
@@ -48,24 +48,24 @@ describe("criarJogador / listarJogadores (contra Postgres real)", () => {
 
 describe("editarNomeDoJogador (contra Postgres real)", () => {
   it("atualiza o nome de um Jogador existente", async () => {
-    const criado = await criarJogador(NOMES_DE_TESTE[0]);
+    const criado = await criarJogador(NOMES_DE_TESTE[0], null);
 
-    const editado = await editarNomeDoJogador(criado.id, "Zeca Editado de Teste");
+    const editado = await editarNomeDoJogador(criado.id, "Zeca Editado de Teste", null);
 
     expect(editado?.nome).toBe("Zeca Editado de Teste");
   });
 
   it("retorna null para um id que não existe", async () => {
-    const editado = await editarNomeDoJogador(999999999, "Ninguém");
+    const editado = await editarNomeDoJogador(999999999, "Ninguém", null);
     expect(editado).toBeNull();
   });
 });
 
 describe("definirAtivoDoJogador / listarJogadoresAtivos (contra Postgres real)", () => {
   it("desativar remove o Jogador de listarJogadoresAtivos, mas ele continua em listarJogadores", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
 
-    await definirAtivoDoJogador(jogador.id, false);
+    await definirAtivoDoJogador(jogador.id, false, null);
 
     const ativos = await listarJogadoresAtivos();
     const todos = await listarJogadores();
@@ -75,10 +75,10 @@ describe("definirAtivoDoJogador / listarJogadoresAtivos (contra Postgres real)",
   });
 
   it("reativar volta a incluir o Jogador em listarJogadoresAtivos", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
-    await definirAtivoDoJogador(jogador.id, false);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
+    await definirAtivoDoJogador(jogador.id, false, null);
 
-    await definirAtivoDoJogador(jogador.id, true);
+    await definirAtivoDoJogador(jogador.id, true, null);
 
     const ativos = await listarJogadoresAtivos();
     expect(ativos.some((j) => j.id === jogador.id)).toBe(true);
@@ -92,7 +92,7 @@ describe("definirAtivoDoJogador / listarJogadoresAtivos (contra Postgres real)",
     );
     const organizadorId = rows[0].id;
 
-    await expect(definirAtivoDoJogador(organizadorId, false)).rejects.toThrow(
+    await expect(definirAtivoDoJogador(organizadorId, false, null)).rejects.toThrow(
       OrganizadorNaoPodeSerDesativadoError,
     );
 
@@ -107,17 +107,17 @@ describe("definirAtivoDoJogador / listarJogadoresAtivos (contra Postgres real)",
 // verificada manualmente contra a API de verdade (ver ticket 43).
 describe("definirOrganizadorDoJogador (contra Postgres real)", () => {
   it("recusa promover sem telefone (nem no Jogador, nem passado na chamada)", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
 
-    await expect(definirOrganizadorDoJogador(jogador.id, true)).rejects.toThrow(
+    await expect(definirOrganizadorDoJogador(jogador.id, true, null)).rejects.toThrow(
       TelefoneObrigatorioParaOrganizadorError,
     );
   });
 
   it("promove com telefone passado na chamada — grava telefone e uma senha igual aos 4 últimos dígitos", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
 
-    const promovido = await definirOrganizadorDoJogador(jogador.id, true, "11900003333");
+    const promovido = await definirOrganizadorDoJogador(jogador.id, true, null, "11900003333");
 
     expect(promovido).toMatchObject({ ehOrganizador: true, telefone: "11900003333" });
     const { rows } = await db.query<{ senha_hash: string }>(
@@ -128,29 +128,29 @@ describe("definirOrganizadorDoJogador (contra Postgres real)", () => {
   });
 
   it("promove usando o telefone que o Jogador já tinha, sem precisar passar de novo", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
     await db.query(`UPDATE jogadores SET telefone = '11900004444' WHERE id = $1`, [jogador.id]);
 
-    const promovido = await definirOrganizadorDoJogador(jogador.id, true);
+    const promovido = await definirOrganizadorDoJogador(jogador.id, true, null);
 
     expect(promovido?.telefone).toBe("11900004444");
   });
 
   it("recusa promover com um telefone que já é de outro Jogador", async () => {
-    const jogadorA = await criarJogador(NOMES_DE_TESTE[0]);
-    await definirOrganizadorDoJogador(jogadorA.id, true, "11900005555");
-    const jogadorB = await criarJogador(NOMES_DE_TESTE[1]);
+    const jogadorA = await criarJogador(NOMES_DE_TESTE[0], null);
+    await definirOrganizadorDoJogador(jogadorA.id, true, null, "11900005555");
+    const jogadorB = await criarJogador(NOMES_DE_TESTE[1], null);
 
     await expect(
-      definirOrganizadorDoJogador(jogadorB.id, true, "11900005555"),
+      definirOrganizadorDoJogador(jogadorB.id, true, null, "11900005555"),
     ).rejects.toThrow(TelefoneJaCadastradoError);
   });
 
   it("rebaixar invalida a senha — login antigo deixa de funcionar", async () => {
-    const jogador = await criarJogador(NOMES_DE_TESTE[0]);
-    await definirOrganizadorDoJogador(jogador.id, true, "11900006666");
+    const jogador = await criarJogador(NOMES_DE_TESTE[0], null);
+    await definirOrganizadorDoJogador(jogador.id, true, null, "11900006666");
 
-    const rebaixado = await definirOrganizadorDoJogador(jogador.id, false);
+    const rebaixado = await definirOrganizadorDoJogador(jogador.id, false, null);
 
     expect(rebaixado?.ehOrganizador).toBe(false);
     const { rows } = await db.query<{ senha_hash: string | null }>(

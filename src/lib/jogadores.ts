@@ -1,6 +1,7 @@
 import { db, withTransaction } from "@/lib/db";
 import { hashSenha, senhaInicialParaTelefone } from "@/lib/auth/senha";
 import { normalizarTelefone } from "@/lib/auth/telefone";
+import { registrarEvento } from "@/lib/auditoria";
 
 /**
  * Um Jogador tal como listado/editado pelo Organizador. `telefone` só é
@@ -75,13 +76,17 @@ export class UltimoOrganizadorNaoPodeSerRemovidoError extends Error {
   }
 }
 
-/** Cria um novo Jogador com apenas o nome (sem login — ver Organizador). */
-export async function criarJogador(nome: string): Promise<Jogador> {
+/**
+ * Cria um novo Jogador com apenas o nome (sem login — ver Organizador).
+ * `atorId` é o Organizador logado que está cadastrando (null = script/
+ * seed, sem ninguém logado) — ver ticket 44.
+ */
+export async function criarJogador(nome: string, atorId: number | null): Promise<Jogador> {
   const { rows } = await db.query<LinhaJogador>(
-    `INSERT INTO jogadores (nome)
-     VALUES ($1)
+    `INSERT INTO jogadores (nome, criado_por_jogador_id)
+     VALUES ($1, $2)
      RETURNING ${COLUNAS_DO_JOGADOR}`,
-    [nome],
+    [nome, atorId],
   );
 
   return linhaParaJogador(rows[0]);
@@ -109,13 +114,14 @@ export async function listarJogadoresAtivos(): Promise<Jogador[]> {
 export async function editarNomeDoJogador(
   id: number,
   nome: string,
+  atorId: number | null,
 ): Promise<Jogador | null> {
   const { rows } = await db.query<LinhaJogador>(
     `UPDATE jogadores
-     SET nome = $2
+     SET nome = $2, atualizado_por_jogador_id = $3, atualizado_em = now()
      WHERE id = $1
      RETURNING ${COLUNAS_DO_JOGADOR}`,
-    [id, nome],
+    [id, nome, atorId],
   );
 
   return rows[0] ? linhaParaJogador(rows[0]) : null;
@@ -131,6 +137,7 @@ export async function editarNomeDoJogador(
 export async function definirAtivoDoJogador(
   id: number,
   ativo: boolean,
+  atorId: number | null,
 ): Promise<Jogador | null> {
   if (!ativo) {
     const { rows } = await db.query<{ eh_organizador: boolean }>(
@@ -144,10 +151,10 @@ export async function definirAtivoDoJogador(
 
   const { rows } = await db.query<LinhaJogador>(
     `UPDATE jogadores
-     SET ativo = $2
+     SET ativo = $2, atualizado_por_jogador_id = $3, atualizado_em = now()
      WHERE id = $1
      RETURNING ${COLUNAS_DO_JOGADOR}`,
-    [id, ativo],
+    [id, ativo, atorId],
   );
 
   return rows[0] ? linhaParaJogador(rows[0]) : null;
@@ -176,6 +183,7 @@ export async function definirAtivoDoJogador(
 export async function definirOrganizadorDoJogador(
   id: number,
   ehOrganizador: boolean,
+  atorId: number | null,
   telefone?: string,
 ): Promise<Jogador | null> {
   return withTransaction(async (client) => {
@@ -195,11 +203,21 @@ export async function definirOrganizadorDoJogador(
       try {
         const { rows: atualizado } = await client.query<LinhaJogador>(
           `UPDATE jogadores
-           SET eh_organizador = true, telefone = $2, senha_hash = $3
+           SET eh_organizador = true, telefone = $2, senha_hash = $3,
+               atualizado_por_jogador_id = $4, atualizado_em = now()
            WHERE id = $1
            RETURNING ${COLUNAS_DO_JOGADOR}`,
-          [id, telefoneFinal, senhaHash],
+          [id, telefoneFinal, senhaHash, atorId],
         );
+        // Ação sensível — vira Organizador é acesso de verdade ao app.
+        // Ver ticket 44.
+        await registrarEvento(client, {
+          jogadorId: atorId,
+          acao: "jogador.promovido",
+          entidadeTipo: "jogador",
+          entidadeId: id,
+          dadosDepois: { ehOrganizador: true, telefone: telefoneFinal },
+        });
         return linhaParaJogador(atualizado[0]);
       } catch (error) {
         if ((error as { code?: string }).code === "23505") {
@@ -220,11 +238,19 @@ export async function definirOrganizadorDoJogador(
 
     const { rows: atualizado } = await client.query<LinhaJogador>(
       `UPDATE jogadores
-       SET eh_organizador = false, senha_hash = NULL
+       SET eh_organizador = false, senha_hash = NULL,
+           atualizado_por_jogador_id = $2, atualizado_em = now()
        WHERE id = $1
        RETURNING ${COLUNAS_DO_JOGADOR}`,
-      [id],
+      [id, atorId],
     );
+    await registrarEvento(client, {
+      jogadorId: atorId,
+      acao: "jogador.rebaixado",
+      entidadeTipo: "jogador",
+      entidadeId: id,
+      dadosAntes: { ehOrganizador: true },
+    });
     return linhaParaJogador(atualizado[0]);
   });
 }

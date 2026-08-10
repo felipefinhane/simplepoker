@@ -32,9 +32,9 @@ const PARAMETROS_DE_TESTE = {
 /** Preenche posição de todo mundo e finaliza — atalho pra montar fixtures nos testes. */
 async function finalizarComResultado(partidaId: number, jogadorIds: number[]) {
   for (const [i, jogadorId] of jogadorIds.entries()) {
-    await atualizarLancamento(partidaId, jogadorId, { posicao: i + 1 });
+    await atualizarLancamento(partidaId, jogadorId, { posicao: i + 1 }, null);
   }
-  return finalizarPartida(partidaId);
+  return finalizarPartida(partidaId, null);
 }
 
 async function limpar() {
@@ -53,12 +53,12 @@ afterAll(async () => {
 
 describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTemporada (contra Postgres real)", () => {
   it("uma Partida lançada gera a entrada automática, e o saldo reflete isso", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const jogadores = await Promise.all(
-      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
+      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
     );
     const ids = jogadores.map((j) => j.id);
-    const partida = await criarPartida("2026-01-01", ids);
+    const partida = await criarPartida("2026-01-01", ids, null);
     await finalizarComResultado(partida.id, ids);
 
     // 5 * 10 - (20 + 10) = 20
@@ -71,13 +71,13 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
   });
 
   it("lança uma saída manual e desconta do saldo", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     const transacao = await lancarSaidaManual(temporada.id, {
       data: "2026-01-05",
       descricao: "Compra de baralho",
       valor: 39,
-    });
+    }, null);
 
     expect(transacao).toMatchObject({
       tipo: "saida_manual",
@@ -90,18 +90,18 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
   });
 
   it("saldo combina entradas automáticas e saídas manuais corretamente", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const jogadores = await Promise.all(
-      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`)),
+      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
     );
     const ids = jogadores.map((j) => j.id);
-    const partida = await criarPartida("2026-01-01", ids);
+    const partida = await criarPartida("2026-01-01", ids, null);
     await finalizarComResultado(partida.id, ids);
     await lancarSaidaManual(temporada.id, {
       data: "2026-01-05",
       descricao: "Baralho",
       valor: 15,
-    });
+    }, null);
 
     // 20 (entrada) - 15 (saída) = 5
     const saldo = await calcularSaldoDaTemporada(temporada.id);
@@ -112,37 +112,37 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
   });
 
   it("recusa saída manual com valor não positivo", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     await expect(
-      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "Algo", valor: 0 }),
+      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "Algo", valor: 0 }, null),
     ).rejects.toThrow(DadosDaSaidaInvalidosError);
   });
 
   it("recusa saída manual sem descrição", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     await expect(
-      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "   ", valor: 10 }),
+      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "   ", valor: 10 }, null),
     ).rejects.toThrow(DadosDaSaidaInvalidosError);
   });
 
   it("recusa saída manual numa Temporada encerrada", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
-    await encerrarTemporada(temporada.id);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await encerrarTemporada(temporada.id, null);
 
     await expect(
-      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "Algo", valor: 10 }),
+      lancarSaidaManual(temporada.id, { data: "2026-01-05", descricao: "Algo", valor: 10 }, null),
     ).rejects.toThrow(TemporadaEncerradaError);
   });
 
   it("saldo de uma Temporada sem nenhuma transação é zero", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     expect(await calcularSaldoDaTemporada(temporada.id)).toBe(0);
   });
 
   it("corrida real entre lançar saída manual e encerrar a Temporada: nunca fica uma saída gravada numa Temporada encerrada", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     // Sem `await` entre as duas, pra forçar a corrida de verdade.
     const [resultadoDaSaida, resultadoDoEncerramento] = await Promise.allSettled([
@@ -150,8 +150,8 @@ describe("lancarSaidaManual / listarTransacoesDaTemporada / calcularSaldoDaTempo
         data: "2026-01-05",
         descricao: "Baralho",
         valor: 39,
-      }),
-      encerrarTemporada(temporada.id),
+      }, null),
+      encerrarTemporada(temporada.id, null),
     ]);
 
     expect(resultadoDoEncerramento.status).toBe("fulfilled");

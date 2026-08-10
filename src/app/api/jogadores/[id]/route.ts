@@ -46,13 +46,18 @@ export async function PATCH(
   let jogador = null;
   try {
     if (nome !== undefined) {
-      jogador = await editarNomeDoJogador(id, nome);
+      jogador = await editarNomeDoJogador(id, nome, organizadorOuResposta.id);
     }
     if (ativo !== undefined) {
-      jogador = await definirAtivoDoJogador(id, ativo);
+      jogador = await definirAtivoDoJogador(id, ativo, organizadorOuResposta.id);
     }
     if (ehOrganizador !== undefined) {
-      jogador = await definirOrganizadorDoJogador(id, ehOrganizador, telefone);
+      jogador = await definirOrganizadorDoJogador(
+        id,
+        ehOrganizador,
+        organizadorOuResposta.id,
+        telefone,
+      );
     }
   } catch (error) {
     if (

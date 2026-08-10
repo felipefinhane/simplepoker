@@ -14,6 +14,7 @@ import {
   buscarTemporadaPorId,
 } from "@/lib/temporadas";
 import { listarJogadoresAtivos } from "@/lib/jogadores";
+import { registrarEvento } from "@/lib/auditoria";
 
 /** Ver CONTEXT.md — Partida exige no mínimo 5 participantes. */
 export const MINIMO_DE_PARTICIPANTES = 5;
@@ -122,6 +123,7 @@ export class ResultadosIncompletosError extends Error {
 export async function criarPartida(
   data: string,
   jogadorIdsBrutos: number[],
+  atorId: number | null,
 ): Promise<Partida> {
   // Ids duplicados não deveriam acontecer vindo da UI (checkboxes), mas
   // se vierem, contam como um participante só — evita um erro cru de
@@ -140,15 +142,17 @@ export async function criarPartida(
 
   const partidaId = await withTransaction(async (client) => {
     const { rows } = await client.query<{ id: number }>(
-      `INSERT INTO partidas (temporada_id, data) VALUES ($1, $2) RETURNING id`,
-      [temporada.id, data],
+      `INSERT INTO partidas (temporada_id, data, criado_por_jogador_id)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [temporada.id, data, atorId],
     );
     const id = rows[0].id;
 
     for (const jogadorId of jogadorIds) {
       await client.query(
-        `INSERT INTO lancamentos (partida_id, jogador_id) VALUES ($1, $2)`,
-        [id, jogadorId],
+        `INSERT INTO lancamentos (partida_id, jogador_id, criado_por_jogador_id)
+         VALUES ($1, $2, $3)`,
+        [id, jogadorId, atorId],
       );
     }
 
@@ -276,6 +280,7 @@ export async function listarPartidasDaTemporada(
 }
 
 interface LancamentoTravado {
+  id: number;
   jogadorId: number;
   posicao: number | null;
   eliminadoPorJogadorId: number | null;
@@ -311,12 +316,13 @@ async function travarPartidaEditavel(
   if (!temporadaRows[0]?.aberta) throw new TemporadaEncerradaError();
 
   const { rows: lancamentoRows } = await client.query<{
+    id: number;
     jogador_id: number;
     posicao: number | null;
     eliminado_por_jogador_id: number | null;
     pagamento: boolean;
   }>(
-    `SELECT jogador_id, posicao, eliminado_por_jogador_id, pagamento
+    `SELECT id, jogador_id, posicao, eliminado_por_jogador_id, pagamento
      FROM lancamentos WHERE partida_id = $1 FOR UPDATE`,
     [partidaId],
   );
@@ -324,6 +330,7 @@ async function travarPartidaEditavel(
   return {
     temporadaId: partidaRow.temporada_id,
     lancamentos: lancamentoRows.map((r) => ({
+      id: r.id,
       jogadorId: r.jogador_id,
       posicao: r.posicao,
       eliminadoPorJogadorId: r.eliminado_por_jogador_id,
@@ -336,6 +343,7 @@ async function travarPartidaEditavel(
 export async function editarDataDaPartida(
   partidaId: number,
   novaData: string,
+  atorId: number | null,
 ): Promise<Partida> {
   if (!novaData) {
     throw new DadosDaPartidaInvalidosError("Informe a data da Partida.");
@@ -343,7 +351,12 @@ export async function editarDataDaPartida(
 
   await withTransaction(async (client) => {
     await travarPartidaEditavel(client, partidaId);
-    await client.query(`UPDATE partidas SET data = $2 WHERE id = $1`, [partidaId, novaData]);
+    await client.query(
+      `UPDATE partidas
+       SET data = $2, atualizado_por_jogador_id = $3, atualizado_em = now()
+       WHERE id = $1`,
+      [partidaId, novaData, atorId],
+    );
   });
 
   return (await buscarPartidaPorId(partidaId))!;
@@ -353,6 +366,7 @@ export async function editarDataDaPartida(
 export async function adicionarParticipante(
   partidaId: number,
   jogadorId: number,
+  atorId: number | null,
 ): Promise<Partida> {
   await validarJogadoresAtivos([jogadorId]);
 
@@ -364,8 +378,9 @@ export async function adicionarParticipante(
     }
 
     await client.query(
-      `INSERT INTO lancamentos (partida_id, jogador_id) VALUES ($1, $2)`,
-      [partidaId, jogadorId],
+      `INSERT INTO lancamentos (partida_id, jogador_id, criado_por_jogador_id)
+       VALUES ($1, $2, $3)`,
+      [partidaId, jogadorId, atorId],
     );
   });
 
@@ -427,6 +442,7 @@ export async function atualizarLancamento(
   partidaId: number,
   jogadorId: number,
   dados: AtualizacaoDeLancamento,
+  atorId: number | null,
 ): Promise<Partida> {
   await withTransaction(async (client) => {
     const { lancamentos } = await travarPartidaEditavel(client, partidaId);
@@ -459,10 +475,26 @@ export async function atualizarLancamento(
 
     await client.query(
       `UPDATE lancamentos
-       SET posicao = $3, eliminado_por_jogador_id = $4, pagamento = $5
+       SET posicao = $3, eliminado_por_jogador_id = $4, pagamento = $5,
+           atualizado_por_jogador_id = $6, atualizado_em = now()
        WHERE partida_id = $1 AND jogador_id = $2`,
-      [partidaId, jogadorId, posicao, eliminadoPorJogadorId, pagamento],
+      [partidaId, jogadorId, posicao, eliminadoPorJogadorId, pagamento, atorId],
     );
+
+    // Corrige posição/eliminador de alguém — é onde mais rola disputa
+    // ("quem mudou minha posição?"). Ver ticket 44.
+    await registrarEvento(client, {
+      jogadorId: atorId,
+      acao: "lancamento.atualizado",
+      entidadeTipo: "lancamento",
+      entidadeId: lancamento.id,
+      dadosAntes: {
+        posicao: lancamento.posicao,
+        eliminadoPorJogadorId: lancamento.eliminadoPorJogadorId,
+        pagamento: lancamento.pagamento,
+      },
+      dadosDepois: { posicao, eliminadoPorJogadorId, pagamento },
+    });
   });
 
   return (await buscarPartidaPorId(partidaId))!;
@@ -477,6 +509,7 @@ export async function marcarSaida(
   partidaId: number,
   jogadorId: number,
   eliminadoPorJogadorId: number | null,
+  atorId: number | null,
 ): Promise<Partida> {
   await withTransaction(async (client) => {
     const { lancamentos } = await travarPartidaEditavel(client, partidaId);
@@ -495,10 +528,20 @@ export async function marcarSaida(
 
     await client.query(
       `UPDATE lancamentos
-       SET posicao = $3, eliminado_por_jogador_id = $4
+       SET posicao = $3, eliminado_por_jogador_id = $4,
+           atualizado_por_jogador_id = $5, atualizado_em = now()
        WHERE partida_id = $1 AND jogador_id = $2`,
-      [partidaId, jogadorId, posicao, eliminadoPorJogadorId],
+      [partidaId, jogadorId, posicao, eliminadoPorJogadorId, atorId],
     );
+
+    await registrarEvento(client, {
+      jogadorId: atorId,
+      acao: "lancamento.atualizado",
+      entidadeTipo: "lancamento",
+      entidadeId: lancamento.id,
+      dadosAntes: { posicao: null, eliminadoPorJogadorId: null },
+      dadosDepois: { posicao, eliminadoPorJogadorId },
+    });
   });
 
   return (await buscarPartidaPorId(partidaId))!;
@@ -518,7 +561,10 @@ export interface PartidaFinalizada {
  * reaberta — não deveria acontecer hoje, mas o UPSERT é seguro de
  * qualquer forma). Trava a Partida contra novas edições.
  */
-export async function finalizarPartida(partidaId: number): Promise<PartidaFinalizada> {
+export async function finalizarPartida(
+  partidaId: number,
+  atorId: number | null,
+): Promise<PartidaFinalizada> {
   let temporadaId!: number;
   let premiacao!: PremiacaoDaPartida;
   let entradaNoCaixa!: number;
@@ -534,12 +580,19 @@ export async function finalizarPartida(partidaId: number): Promise<PartidaFinali
 
     if (semPosicao.length === 1) {
       await client.query(
-        `UPDATE lancamentos SET posicao = 1 WHERE partida_id = $1 AND jogador_id = $2`,
-        [partidaId, semPosicao[0].jogadorId],
+        `UPDATE lancamentos
+         SET posicao = 1, atualizado_por_jogador_id = $3, atualizado_em = now()
+         WHERE partida_id = $1 AND jogador_id = $2`,
+        [partidaId, semPosicao[0].jogadorId, atorId],
       );
     }
 
-    await client.query(`UPDATE partidas SET finalizada = true WHERE id = $1`, [partidaId]);
+    await client.query(
+      `UPDATE partidas
+       SET finalizada = true, atualizado_por_jogador_id = $2, atualizado_em = now()
+       WHERE id = $1`,
+      [partidaId, atorId],
+    );
 
     // Parâmetros da Temporada são congelados na criação (ver CONTEXT.md)
     // — ler fora da trava desta transação é seguro, não mudam durante ela.
@@ -548,11 +601,12 @@ export async function finalizarPartida(partidaId: number): Promise<PartidaFinali
     entradaNoCaixa = calcularEntradaNoCaixa(travado.lancamentos.length, temporada.parametros);
 
     await client.query(
-      `INSERT INTO caixa_transacoes (temporada_id, tipo, valor, partida_id)
-       VALUES ($1, 'entrada_partida', $2, $3)
+      `INSERT INTO caixa_transacoes
+         (temporada_id, tipo, valor, partida_id, criado_por_jogador_id)
+       VALUES ($1, 'entrada_partida', $2, $3, $4)
        ON CONFLICT (partida_id) WHERE tipo = 'entrada_partida'
        DO UPDATE SET valor = EXCLUDED.valor`,
-      [temporadaId, entradaNoCaixa, partidaId],
+      [temporadaId, entradaNoCaixa, partidaId, atorId],
     );
   });
 

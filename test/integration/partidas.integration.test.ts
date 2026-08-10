@@ -52,7 +52,7 @@ beforeEach(async () => {
 
   const jogadores = await Promise.all(
     ["Um", "Dois", "Três", "Quatro", "Cinco", "Seis"].map((n) =>
-      criarJogador(`${n} de Teste`),
+      criarJogador(`${n} de Teste`, null),
     ),
   );
   jogadorIds = jogadores.map((j) => j.id);
@@ -65,33 +65,33 @@ afterAll(async () => {
 
 describe("criarPartida (contra Postgres real)", () => {
   it("recusa criar com menos de 5 participantes, mesmo com Temporada aberta", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
 
     await expect(
-      criarPartida("2026-01-10", jogadorIds.slice(0, 4)),
+      criarPartida("2026-01-10", jogadorIds.slice(0, 4), null),
     ).rejects.toThrow(MinimoDeParticipantesError);
   });
 
   it("recusa criar sem Temporada aberta", async () => {
     await expect(
-      criarPartida("2026-01-10", jogadorIds.slice(0, 5)),
+      criarPartida("2026-01-10", jogadorIds.slice(0, 5), null),
     ).rejects.toThrow(NenhumaTemporadaAbertaError);
   });
 
   it("recusa um jogadorId desativado", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
-    await definirAtivoDoJogador(jogadorIds[0], false);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await definirAtivoDoJogador(jogadorIds[0], false, null);
 
     await expect(
-      criarPartida("2026-01-10", jogadorIds.slice(0, 5)),
+      criarPartida("2026-01-10", jogadorIds.slice(0, 5), null),
     ).rejects.toThrow(JogadorInvalidoError);
   });
 
   it("cria a Partida não finalizada, com um Lançamento vazio por participante", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
 
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
 
     expect(partida.temporadaId).toBe(temporada.id);
     expect(partida.finalizada).toBe(false);
@@ -104,24 +104,24 @@ describe("criarPartida (contra Postgres real)", () => {
 
 describe("editarDataDaPartida (contra Postgres real)", () => {
   it("edita a data de uma Partida em andamento", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
-    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5));
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
 
-    const editada = await editarDataDaPartida(partida.id, "2026-01-15");
+    const editada = await editarDataDaPartida(partida.id, "2026-01-15", null);
     expect(editada.data).toBe("2026-01-15");
   });
 
   it("recusa editar a data de uma Partida já finalizada", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
     for (const id of participantes.slice(0, 4)) {
-      await marcarSaida(partida.id, id, null);
+      await marcarSaida(partida.id, id, null, null);
     }
     // Sobra 1 (o último) e mais nenhum — finaliza direto.
-    await finalizarPartida(partida.id);
+    await finalizarPartida(partida.id, null);
 
-    await expect(editarDataDaPartida(partida.id, "2026-01-20")).rejects.toThrow(
+    await expect(editarDataDaPartida(partida.id, "2026-01-20", null)).rejects.toThrow(
       PartidaFinalizadaError,
     );
   });
@@ -129,31 +129,31 @@ describe("editarDataDaPartida (contra Postgres real)", () => {
 
 describe("adicionarParticipante (contra Postgres real)", () => {
   it("adiciona um Jogador ativo que ainda não participava", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
-    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5));
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
 
-    const atualizada = await adicionarParticipante(partida.id, jogadorIds[5]);
+    const atualizada = await adicionarParticipante(partida.id, jogadorIds[5], null);
 
     expect(atualizada.lancamentos).toHaveLength(6);
     expect(atualizada.lancamentos.some((l) => l.jogadorId === jogadorIds[5])).toBe(true);
   });
 
   it("recusa adicionar quem já é participante", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
 
-    await expect(adicionarParticipante(partida.id, participantes[0])).rejects.toThrow(
+    await expect(adicionarParticipante(partida.id, participantes[0], null)).rejects.toThrow(
       DadosDaPartidaInvalidosError,
     );
   });
 
   it("recusa adicionar um Jogador desativado", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
-    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5));
-    await definirAtivoDoJogador(jogadorIds[5], false);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
+    await definirAtivoDoJogador(jogadorIds[5], false, null);
 
-    await expect(adicionarParticipante(partida.id, jogadorIds[5])).rejects.toThrow(
+    await expect(adicionarParticipante(partida.id, jogadorIds[5], null)).rejects.toThrow(
       JogadorInvalidoError,
     );
   });
@@ -161,15 +161,15 @@ describe("adicionarParticipante (contra Postgres real)", () => {
 
 describe("atualizarLancamento (contra Postgres real)", () => {
   it("atualiza posicao, eliminador e pagamento parcialmente", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
 
-    await atualizarLancamento(partida.id, participantes[0], { pagamento: true });
+    await atualizarLancamento(partida.id, participantes[0], { pagamento: true }, null);
     const atualizada = await atualizarLancamento(partida.id, participantes[1], {
       posicao: 5,
       eliminadoPorJogadorId: participantes[0],
-    });
+    }, null);
 
     const linha0 = atualizada.lancamentos.find((l) => l.jogadorId === participantes[0]);
     const linha1 = atualizada.lancamentos.find((l) => l.jogadorId === participantes[1]);
@@ -179,98 +179,98 @@ describe("atualizarLancamento (contra Postgres real)", () => {
   });
 
   it("recusa duas posições iguais na mesma Partida", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
-    await atualizarLancamento(partida.id, participantes[0], { posicao: 5 });
+    const partida = await criarPartida("2026-01-10", participantes, null);
+    await atualizarLancamento(partida.id, participantes[0], { posicao: 5 }, null);
 
     await expect(
-      atualizarLancamento(partida.id, participantes[1], { posicao: 5 }),
+      atualizarLancamento(partida.id, participantes[1], { posicao: 5 }, null),
     ).rejects.toThrow(DadosDaPartidaInvalidosError);
   });
 
   it("recusa um Jogador eliminando a si mesmo", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
 
     await expect(
       atualizarLancamento(partida.id, participantes[0], {
         eliminadoPorJogadorId: participantes[0],
-      }),
+      }, null),
     ).rejects.toThrow(DadosDaPartidaInvalidosError);
   });
 
   it("recusa um eliminador que não é participante desta Partida", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
 
     await expect(
       atualizarLancamento(partida.id, participantes[0], {
         eliminadoPorJogadorId: jogadorIds[5],
-      }),
+      }, null),
     ).rejects.toThrow(DadosDaPartidaInvalidosError);
   });
 
   it("recusa editar Lançamento de Partida já finalizada", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
     for (const id of participantes.slice(0, 4)) {
-      await marcarSaida(partida.id, id, null);
+      await marcarSaida(partida.id, id, null, null);
     }
-    await finalizarPartida(partida.id);
+    await finalizarPartida(partida.id, null);
 
     await expect(
-      atualizarLancamento(partida.id, participantes[0], { pagamento: true }),
+      atualizarLancamento(partida.id, participantes[0], { pagamento: true }, null),
     ).rejects.toThrow(PartidaFinalizadaError);
   });
 });
 
 describe("marcarSaida (contra Postgres real)", () => {
   it("atribui posição contando os participantes ainda ativos, do maior pro menor", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e] = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e]);
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e], null);
 
-    const depoisDeUm = await marcarSaida(partida.id, e, c);
+    const depoisDeUm = await marcarSaida(partida.id, e, c, null);
     expect(depoisDeUm.lancamentos.find((l) => l.jogadorId === e)?.posicao).toBe(5);
 
-    const depoisDeDois = await marcarSaida(partida.id, d, a);
+    const depoisDeDois = await marcarSaida(partida.id, d, a, null);
     expect(depoisDeDois.lancamentos.find((l) => l.jogadorId === d)?.posicao).toBe(4);
   });
 
   it("recusa um eliminador que já não está mais ativo", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e] = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e]);
-    await marcarSaida(partida.id, e, c); // c ainda ativo aqui
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e], null);
+    await marcarSaida(partida.id, e, c, null); // c ainda ativo aqui
 
-    await expect(marcarSaida(partida.id, d, e)).rejects.toThrow(DadosDaPartidaInvalidosError);
+    await expect(marcarSaida(partida.id, d, e, null)).rejects.toThrow(DadosDaPartidaInvalidosError);
   });
 
   it("recusa marcar saída de quem já tem posição", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e] = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e]);
-    await marcarSaida(partida.id, e, c);
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e], null);
+    await marcarSaida(partida.id, e, c, null);
 
-    await expect(marcarSaida(partida.id, e, c)).rejects.toThrow(DadosDaPartidaInvalidosError);
+    await expect(marcarSaida(partida.id, e, c, null)).rejects.toThrow(DadosDaPartidaInvalidosError);
   });
 
   it("convive com o fluxo manual sem duplicar posição: uma posição atribuída fora de ordem por atualizarLancamento não é reaproveitada por uma saída incremental", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e, f] = jogadorIds;
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e, f]);
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e, f], null);
 
     // O Organizador já sabe (por algum motivo) que D ficou em 4º e lança
     // isso direto, fora de ordem — sem passar por marcarSaida.
-    await atualizarLancamento(partida.id, d, { posicao: 4 });
+    await atualizarLancamento(partida.id, d, { posicao: 4 }, null);
 
     // Agora E sai "ao vivo" — a próxima posição livre, contando do maior
     // pro menor entre as 6, é a 6ª (a 4ª já foi ocupada por D).
-    const atualizada = await marcarSaida(partida.id, e, c);
+    const atualizada = await marcarSaida(partida.id, e, c, null);
     expect(atualizada.lancamentos.find((l) => l.jogadorId === e)?.posicao).toBe(6);
 
     const posicoes = atualizada.lancamentos.map((l) => l.posicao).filter((p) => p !== null);
@@ -278,15 +278,15 @@ describe("marcarSaida (contra Postgres real)", () => {
   });
 
   it("corrida real entre duas saídas simultâneas na mesma Partida: nunca duas pessoas recebem a mesma posição", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e] = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e]);
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e], null);
 
     // Sem `await` entre as duas, pra forçar a corrida de verdade: D e E
     // saem "ao mesmo tempo", cada um eliminado por um ainda ativo (A/B).
     const [resultadoD, resultadoE] = await Promise.allSettled([
-      marcarSaida(partida.id, d, a),
-      marcarSaida(partida.id, e, b),
+      marcarSaida(partida.id, d, a, null),
+      marcarSaida(partida.id, e, b, null),
     ]);
 
     expect(resultadoD.status).toBe("fulfilled");
@@ -305,19 +305,19 @@ describe("marcarSaida (contra Postgres real)", () => {
 
 describe("finalizarPartida (contra Postgres real)", () => {
   it("cenário completo: eliminações em cadeia, 1º/2º manuais, Almas e Caixa corretos", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const [a, b, c, d, e] = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", [a, b, c, d, e]);
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e], null);
 
     // E sai eliminado por C; D sai eliminado por A; C sai eliminado por B.
-    await marcarSaida(partida.id, e, c);
-    await marcarSaida(partida.id, d, a);
-    await marcarSaida(partida.id, c, b);
+    await marcarSaida(partida.id, e, c, null);
+    await marcarSaida(partida.id, d, a, null);
+    await marcarSaida(partida.id, c, b, null);
 
     // Sobram A e B — o Organizador decide manualmente quem foi 2º...
-    await atualizarLancamento(partida.id, b, { posicao: 2 });
+    await atualizarLancamento(partida.id, b, { posicao: 2 }, null);
     // ...e finalizar atribui A como 1º automaticamente (só ele sem posição).
-    const resultado = await finalizarPartida(partida.id);
+    const resultado = await finalizarPartida(partida.id, null);
 
     expect(resultado.partida.finalizada).toBe(true);
     const porId = new Map(resultado.partida.lancamentos.map((l) => [l.jogadorId, l]));
@@ -346,53 +346,53 @@ describe("finalizarPartida (contra Postgres real)", () => {
   });
 
   it("recusa finalizar com mais de um participante sem posição", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
-    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5));
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
 
-    await expect(finalizarPartida(partida.id)).rejects.toThrow(ResultadosIncompletosError);
+    await expect(finalizarPartida(partida.id, null)).rejects.toThrow(ResultadosIncompletosError);
   });
 
   it("trava a Partida contra novas edições depois de finalizada", async () => {
-    await criarTemporada(PARAMETROS_DE_TESTE);
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
     for (const id of participantes.slice(0, 4)) {
-      await marcarSaida(partida.id, id, null);
+      await marcarSaida(partida.id, id, null, null);
     }
-    await finalizarPartida(partida.id);
+    await finalizarPartida(partida.id, null);
 
     await expect(
-      adicionarParticipante(partida.id, jogadorIds[5]),
+      adicionarParticipante(partida.id, jogadorIds[5], null),
     ).rejects.toThrow(PartidaFinalizadaError);
-    await expect(marcarSaida(partida.id, participantes[0], null)).rejects.toThrow(
+    await expect(marcarSaida(partida.id, participantes[0], null, null)).rejects.toThrow(
       PartidaFinalizadaError,
     );
-    await expect(finalizarPartida(partida.id)).rejects.toThrow(PartidaFinalizadaError);
+    await expect(finalizarPartida(partida.id, null)).rejects.toThrow(PartidaFinalizadaError);
   });
 
   it("recusa finalizar numa Temporada já encerrada", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
     for (const id of participantes.slice(0, 4)) {
-      await marcarSaida(partida.id, id, null);
+      await marcarSaida(partida.id, id, null, null);
     }
-    await encerrarTemporada(temporada.id);
+    await encerrarTemporada(temporada.id, null);
 
-    await expect(finalizarPartida(partida.id)).rejects.toThrow(TemporadaEncerradaError);
+    await expect(finalizarPartida(partida.id, null)).rejects.toThrow(TemporadaEncerradaError);
   });
 
   it("corrida real entre finalizar e encerrar a Temporada: nunca fica uma Partida finalizada numa Temporada encerrada", async () => {
-    const temporada = await criarTemporada(PARAMETROS_DE_TESTE);
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
     const participantes = jogadorIds.slice(0, 5);
-    const partida = await criarPartida("2026-01-10", participantes);
+    const partida = await criarPartida("2026-01-10", participantes, null);
     for (const id of participantes.slice(0, 4)) {
-      await marcarSaida(partida.id, id, null);
+      await marcarSaida(partida.id, id, null, null);
     }
 
     const [resultadoDaFinalizacao, resultadoDoEncerramento] = await Promise.allSettled([
-      finalizarPartida(partida.id),
-      encerrarTemporada(temporada.id),
+      finalizarPartida(partida.id, null),
+      encerrarTemporada(temporada.id, null),
     ]);
 
     expect(resultadoDoEncerramento.status).toBe("fulfilled");
