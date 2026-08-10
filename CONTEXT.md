@@ -9,7 +9,7 @@ Uma pessoa que participa do campeonato. Todo jogador aparece no ranking; nem tod
 _Avoid_: Participante, usuário (usuário é reservado para quem tem conta/login)
 
 **Organizador**:
-Um jogador com permissão para criar partidas, lançar classificação, cadastrar novos jogadores e gerenciar o caixa. É o único papel com login no sistema na v1 — os demais jogadores não autenticam.
+Um jogador com permissão para criar partidas, lançar classificação, cadastrar novos jogadores e gerenciar o caixa. É o único papel com login no sistema na v1 — os demais jogadores não autenticam. Pode haver mais de um Organizador ao mesmo tempo: qualquer Organizador pode promover outro Jogador (definindo telefone, se ele ainda não tiver um — a senha inicial é sempre os 4 últimos dígitos do telefone) ou remover o status de outro Organizador (invalida a senha dele na hora). Sempre precisa sobrar pelo menos um Organizador — a última promoção não pode ser removida.
 _Avoid_: Admin, administrador (usar "Organizador" como termo canônico do domínio; "admin" pode aparecer só como detalhe técnico de implementação)
 
 **Temporada**:

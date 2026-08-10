@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { IconeCarregando } from "@/components/icone-carregando";
+import { formatarTelefone } from "@/lib/auth/telefone";
 
 const CAMPO_CLASSE =
   "block w-full rounded-lg border border-outline-variant bg-surface-container-highest py-3 pl-10 pr-3 font-body-md text-body-md text-on-surface placeholder-on-surface-variant/50 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
@@ -78,9 +79,9 @@ export default function LoginPage() {
                 type="tel"
                 required
                 autoComplete="username"
-                placeholder="11999998888"
+                placeholder="(11) 99999-8888"
                 value={telefone}
-                onChange={(event) => setTelefone(event.target.value)}
+                onChange={(event) => setTelefone(formatarTelefone(event.target.value))}
                 className={CAMPO_CLASSE}
               />
             </div>

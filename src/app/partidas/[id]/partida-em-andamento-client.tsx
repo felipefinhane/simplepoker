@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { IconeCarregando } from "@/components/icone-carregando";
+import { ModalGerenciarJogadores } from "@/components/modal-gerenciar-jogadores";
 import type { AtualizacaoDeLancamento, LancamentoDaPartida, Partida } from "@/lib/partidas";
 import type { Jogador } from "@/lib/jogadores";
 
@@ -272,10 +273,11 @@ export function PartidaEmAndamentoClient({
 }) {
   const router = useRouter();
   const [partida, setPartida] = useState(partidaInicial);
-  const [fora, setFora] = useState(foraInicial);
+  const [fora, setFora] = useState<{ id: number; nome: string }[]>(foraInicial);
   const [editandoData, setEditandoData] = useState(false);
   const [data, setData] = useState(partida.data);
   const [adicionando, setAdicionando] = useState(false);
+  const [gerenciandoJogadores, setGerenciandoJogadores] = useState(false);
   const [novoParticipanteId, setNovoParticipanteId] = useState("");
   const [novoJogadorNome, setNovoJogadorNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -443,11 +445,21 @@ export function PartidaEmAndamentoClient({
       {erro && <p className="text-body-md text-error">{erro}</p>}
 
       <div className="flex flex-col gap-2">
-        <div className="mb-1 flex items-end justify-between">
+        <div className="mb-1 flex items-end justify-between gap-2">
           <h3 className="text-headline-md text-on-surface">Participantes</h3>
-          <span className="rounded-lg bg-surface-container px-3 py-1 text-label-data text-on-surface-variant">
-            {partida.lancamentos.length} Total
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGerenciandoJogadores(true)}
+              className="flex items-center gap-1 text-label-sm text-on-surface-variant hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+              Gerenciar
+            </button>
+            <span className="rounded-lg bg-surface-container px-3 py-1 text-label-data text-on-surface-variant">
+              {partida.lancamentos.length} Total
+            </span>
+          </div>
         </div>
 
         {partida.lancamentos.map((lancamento) => (
@@ -547,6 +559,19 @@ export function PartidaEmAndamentoClient({
           quando restar no máximo 1 (o campeão).
         </p>
       )}
+
+      <ModalGerenciarJogadores
+        aberto={gerenciandoJogadores}
+        onFechar={() => setGerenciandoJogadores(false)}
+        onAtualizarAtivos={(ativos) => {
+          // Só sobra quem tá ativo e ainda não é participante desta
+          // Partida — quem já entrou continua na lista de Participantes
+          // acima independente do toggle (desativar não remove ninguém
+          // de uma Partida já em andamento, só evita novas seleções).
+          const jaParticipam = new Set(partida.lancamentos.map((l) => l.jogadorId));
+          setFora(ativos.filter((j) => !jaParticipam.has(j.id)));
+        }}
+      />
     </div>
   );
 }

@@ -2,12 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 import { IconeCarregando } from "@/components/icone-carregando";
+import { formatarTelefone } from "@/lib/auth/telefone";
 
 interface Jogador {
   id: number;
   nome: string;
   ativo: boolean;
   ehOrganizador: boolean;
+  telefone: string | null;
 }
 
 function inicial(nome: string): string {
@@ -37,15 +39,128 @@ function ToggleAtivo({
   );
 }
 
+/**
+ * Estrela clicável pra promover/rebaixar um Jogador a Organizador — quem
+ * ainda não tem telefone precisa informar um antes de virar Organizador
+ * (é como ele vai logar); um formulário inline aparece só nesse caso, em
+ * vez de um `prompt()` do navegador.
+ */
+function BotaoOrganizador({
+  jogador,
+  carregando,
+  erro,
+  onDefinir,
+}: {
+  jogador: Jogador;
+  carregando: boolean;
+  erro: string | null;
+  onDefinir: (id: number, ehOrganizador: boolean, telefone?: string) => void;
+}) {
+  const [pedindoTelefone, setPedindoTelefone] = useState(false);
+  const [telefone, setTelefone] = useState("");
+
+  function clicar() {
+    if (jogador.ehOrganizador) {
+      if (
+        confirm(
+          `Remover ${jogador.nome} como Organizador? A senha atual dele deixa de funcionar.`,
+        )
+      ) {
+        onDefinir(jogador.id, false);
+      }
+      return;
+    }
+
+    if (jogador.telefone) {
+      if (
+        confirm(
+          `Tornar ${jogador.nome} Organizador? A senha inicial será os últimos 4 dígitos do telefone já cadastrado.`,
+        )
+      ) {
+        onDefinir(jogador.id, true);
+      }
+      return;
+    }
+
+    setPedindoTelefone(true);
+  }
+
+  if (pedindoTelefone) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="tel"
+          autoFocus
+          placeholder="(11) 99999-8888"
+          value={telefone}
+          onChange={(event) => setTelefone(formatarTelefone(event.target.value))}
+          className="w-36 rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-label-sm text-on-surface"
+        />
+        <button
+          type="button"
+          disabled={carregando || !telefone.trim()}
+          onClick={() => onDefinir(jogador.id, true, telefone)}
+          className="flex items-center gap-1 rounded bg-secondary px-2 py-1 text-label-sm text-on-secondary disabled:opacity-40"
+        >
+          {carregando && <IconeCarregando tamanho={14} />}
+          OK
+        </button>
+        <button
+          type="button"
+          onClick={() => setPedindoTelefone(false)}
+          className="text-label-sm text-on-surface-variant"
+        >
+          Cancelar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={carregando}
+        onClick={clicar}
+        aria-label={jogador.ehOrganizador ? `Remover ${jogador.nome} como Organizador` : `Tornar ${jogador.nome} Organizador`}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-highest disabled:opacity-50"
+        title={jogador.ehOrganizador ? "Organizador — clique pra remover" : "Tornar Organizador"}
+      >
+        {carregando ? (
+          <IconeCarregando />
+        ) : (
+          <span
+            className={`material-symbols-outlined ${jogador.ehOrganizador ? "text-secondary" : ""}`}
+            style={jogador.ehOrganizador ? { fontVariationSettings: "'FILL' 1" } : undefined}
+          >
+            star
+          </span>
+        )}
+      </button>
+      {erro && (
+        <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-error/40 bg-surface-container-high p-3 text-label-sm text-error shadow-lg">
+          {erro}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Um Jogador na lista — avatar, nome editável inline, status, e o toggle. */
 function LinhaDeJogador({
   jogador,
+  salvandoOrganizador,
+  erroOrganizador,
   onRenomear,
   onAlternarAtivo,
+  onDefinirOrganizador,
 }: {
   jogador: Jogador;
+  salvandoOrganizador: boolean;
+  erroOrganizador: string | null;
   onRenomear: (id: number, nome: string) => void;
   onAlternarAtivo: (id: number, ativo: boolean) => void;
+  onDefinirOrganizador: (id: number, ehOrganizador: boolean, telefone?: string) => void;
 }) {
   return (
     <div
@@ -77,39 +192,31 @@ function LinhaDeJogador({
               }}
               className="min-w-0 flex-1 truncate rounded bg-transparent text-headline-md font-semibold text-on-surface focus:bg-surface-container-highest focus:px-1 focus:outline-none"
             />
-            {jogador.ehOrganizador && (
-              <span
-                className="material-symbols-outlined shrink-0 text-sm text-secondary"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-                title="Organizador"
-              >
-                star
-              </span>
-            )}
           </div>
           <span
             className={`text-label-sm ${jogador.ativo ? "text-primary" : "text-on-surface-variant"}`}
           >
             {jogador.ativo ? "Ativo" : "Inativo"}
+            {jogador.ehOrganizador ? " · Organizador" : ""}
           </span>
         </div>
       </div>
 
-      {jogador.ehOrganizador ? (
-        <span
-          className="material-symbols-outlined shrink-0 text-secondary"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-          title="Organizador — não pode ser desativado por aqui"
-        >
-          star
-        </span>
-      ) : (
-        <ToggleAtivo
-          ativo={jogador.ativo}
-          onChange={(valor) => onAlternarAtivo(jogador.id, valor)}
-          label={jogador.ativo ? `Desativar ${jogador.nome}` : `Reativar ${jogador.nome}`}
+      <div className="flex shrink-0 items-center gap-1">
+        <BotaoOrganizador
+          jogador={jogador}
+          carregando={salvandoOrganizador}
+          erro={erroOrganizador}
+          onDefinir={onDefinirOrganizador}
         />
-      )}
+        {!jogador.ehOrganizador && (
+          <ToggleAtivo
+            ativo={jogador.ativo}
+            onChange={(valor) => onAlternarAtivo(jogador.id, valor)}
+            label={jogador.ativo ? `Desativar ${jogador.nome}` : `Reativar ${jogador.nome}`}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -123,6 +230,10 @@ export function JogadoresClient({
   const [novoNome, setNovoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [salvandoOrganizadorId, setSalvandoOrganizadorId] = useState<number | null>(null);
+  const [erroOrganizador, setErroOrganizador] = useState<{ id: number; mensagem: string } | null>(
+    null,
+  );
 
   async function cadastrar(event: FormEvent) {
     event.preventDefault();
@@ -194,6 +305,28 @@ export function JogadoresClient({
     setJogadores((atual) => atual.map((j) => (j.id === id ? corpo.jogador : j)));
   }
 
+  async function definirOrganizador(id: number, ehOrganizador: boolean, telefone?: string) {
+    setErroOrganizador(null);
+    setSalvandoOrganizadorId(id);
+    try {
+      const resposta = await fetch(`/api/jogadores/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ehOrganizador, telefone }),
+      });
+      const corpo = await resposta.json().catch(() => null);
+
+      if (!resposta.ok) {
+        setErroOrganizador({ id, mensagem: corpo?.error ?? "Não foi possível atualizar." });
+        return;
+      }
+
+      setJogadores((atual) => atual.map((j) => (j.id === id ? corpo.jogador : j)));
+    } finally {
+      setSalvandoOrganizadorId(null);
+    }
+  }
+
   const ativos = jogadores.filter((j) => j.ativo).length;
 
   return (
@@ -255,8 +388,11 @@ export function JogadoresClient({
             <LinhaDeJogador
               key={jogador.id}
               jogador={jogador}
+              salvandoOrganizador={salvandoOrganizadorId === jogador.id}
+              erroOrganizador={erroOrganizador?.id === jogador.id ? erroOrganizador.mensagem : null}
               onRenomear={renomear}
               onAlternarAtivo={alternarAtivo}
+              onDefinirOrganizador={definirOrganizador}
             />
           ))}
         </div>

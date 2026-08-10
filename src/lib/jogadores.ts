@@ -1,11 +1,18 @@
-import { db } from "@/lib/db";
+import { db, withTransaction } from "@/lib/db";
+import { hashSenha, senhaInicialParaTelefone } from "@/lib/auth/senha";
+import { normalizarTelefone } from "@/lib/auth/telefone";
 
-/** Um Jogador tal como listado/editado pelo Organizador. Ver CONTEXT.md. */
+/**
+ * Um Jogador tal como listado/editado pelo Organizador. `telefone` só é
+ * usado (e exigido) por quem é Organizador — ver `definirOrganizadorDoJogador`.
+ * Exposto só em telas/rotas já protegidas por login (ver CONTEXT.md).
+ */
 export interface Jogador {
   id: number;
   nome: string;
   ativo: boolean;
   ehOrganizador: boolean;
+  telefone: string | null;
 }
 
 interface LinhaJogador {
@@ -13,9 +20,10 @@ interface LinhaJogador {
   nome: string;
   ativo: boolean;
   eh_organizador: boolean;
+  telefone: string | null;
 }
 
-const COLUNAS_DO_JOGADOR = "id, nome, ativo, eh_organizador";
+const COLUNAS_DO_JOGADOR = "id, nome, ativo, eh_organizador, telefone";
 
 function linhaParaJogador(linha: LinhaJogador): Jogador {
   return {
@@ -23,6 +31,7 @@ function linhaParaJogador(linha: LinhaJogador): Jogador {
     nome: linha.nome,
     ativo: linha.ativo,
     ehOrganizador: linha.eh_organizador,
+    telefone: linha.telefone,
   };
 }
 
@@ -36,6 +45,33 @@ export class OrganizadorNaoPodeSerDesativadoError extends Error {
   constructor() {
     super("Um Organizador não pode ser desativado por aqui.");
     this.name = "OrganizadorNaoPodeSerDesativadoError";
+  }
+}
+
+/** Promover a Organizador exige telefone — é como esse Jogador vai logar. */
+export class TelefoneObrigatorioParaOrganizadorError extends Error {
+  constructor() {
+    super("Informe o telefone para tornar este Jogador Organizador.");
+    this.name = "TelefoneObrigatorioParaOrganizadorError";
+  }
+}
+
+/** Telefone já usado por outro Jogador (`telefone` é único — ver migration). */
+export class TelefoneJaCadastradoError extends Error {
+  constructor() {
+    super("Esse telefone já está cadastrado para outro Jogador.");
+    this.name = "TelefoneJaCadastradoError";
+  }
+}
+
+/**
+ * Sempre precisa sobrar pelo menos um Organizador — sem isso, ninguém mais
+ * consegue entrar no app pra reverter (ticket 43).
+ */
+export class UltimoOrganizadorNaoPodeSerRemovidoError extends Error {
+  constructor() {
+    super("Não é possível remover o último Organizador restante.");
+    this.name = "UltimoOrganizadorNaoPodeSerRemovidoError";
   }
 }
 
@@ -115,4 +151,80 @@ export async function definirAtivoDoJogador(
   );
 
   return rows[0] ? linhaParaJogador(rows[0]) : null;
+}
+
+/**
+ * Promove/rebaixa um Jogador a Organizador.
+ *
+ * Promover exige telefone (o que o Jogador já tiver, ou o passado aqui) —
+ * vira a senha inicial os 4 últimos dígitos dele
+ * (`senhaInicialParaTelefone`), o mesmo padrão manual que
+ * `seed-organizador.ts` já usava. Lança `TelefoneObrigatorioParaOrganizadorError`
+ * sem telefone nenhum, ou `TelefoneJaCadastradoError` se já for de outro
+ * Jogador (`telefone` é único — ver migration).
+ *
+ * Rebaixar invalida a senha (`senha_hash = NULL`) em vez de só desmarcar
+ * `eh_organizador` — sem isso, a senha antiga continuaria funcionando se
+ * alguém promovesse esse Jogador de novo sem definir uma senha nova.
+ * Trava (dentro de uma transação, `FOR UPDATE` na linha do Jogador —
+ * evita a corrida mais comum, dois cliques na mesma pessoa; a corrida bem
+ * mais rara de duas pessoas *diferentes* sendo rebaixadas ao mesmo tempo
+ * não é travada aqui, custo/benefício não compensa a mais para um app
+ * usado por um grupo pequeno): nunca deixa remover o último Organizador
+ * restante.
+ */
+export async function definirOrganizadorDoJogador(
+  id: number,
+  ehOrganizador: boolean,
+  telefone?: string,
+): Promise<Jogador | null> {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query<{ telefone: string | null; eh_organizador: boolean }>(
+      `SELECT telefone, eh_organizador FROM jogadores WHERE id = $1 FOR UPDATE`,
+      [id],
+    );
+    const linha = rows[0];
+    if (!linha) return null;
+
+    if (ehOrganizador) {
+      const telefoneFinal = normalizarTelefone(telefone ?? linha.telefone ?? "");
+      if (!telefoneFinal) throw new TelefoneObrigatorioParaOrganizadorError();
+
+      const senhaHash = await hashSenha(senhaInicialParaTelefone(telefoneFinal));
+
+      try {
+        const { rows: atualizado } = await client.query<LinhaJogador>(
+          `UPDATE jogadores
+           SET eh_organizador = true, telefone = $2, senha_hash = $3
+           WHERE id = $1
+           RETURNING ${COLUNAS_DO_JOGADOR}`,
+          [id, telefoneFinal, senhaHash],
+        );
+        return linhaParaJogador(atualizado[0]);
+      } catch (error) {
+        if ((error as { code?: string }).code === "23505") {
+          throw new TelefoneJaCadastradoError();
+        }
+        throw error;
+      }
+    }
+
+    if (linha.eh_organizador) {
+      const { rows: contagem } = await client.query<{ total: string }>(
+        `SELECT count(*) AS total FROM jogadores WHERE eh_organizador = true`,
+      );
+      if (Number(contagem[0].total) <= 1) {
+        throw new UltimoOrganizadorNaoPodeSerRemovidoError();
+      }
+    }
+
+    const { rows: atualizado } = await client.query<LinhaJogador>(
+      `UPDATE jogadores
+       SET eh_organizador = false, senha_hash = NULL
+       WHERE id = $1
+       RETURNING ${COLUNAS_DO_JOGADOR}`,
+      [id],
+    );
+    return linhaParaJogador(atualizado[0]);
+  });
 }

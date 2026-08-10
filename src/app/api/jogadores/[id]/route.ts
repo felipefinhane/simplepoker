@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { requireOrganizadorOuResposta } from "@/lib/auth/organizador";
 import {
   OrganizadorNaoPodeSerDesativadoError,
+  TelefoneJaCadastradoError,
+  TelefoneObrigatorioParaOrganizadorError,
+  UltimoOrganizadorNaoPodeSerRemovidoError,
   definirAtivoDoJogador,
+  definirOrganizadorDoJogador,
   editarNomeDoJogador,
 } from "@/lib/jogadores";
 
@@ -22,10 +26,13 @@ export async function PATCH(
   const body = await request.json().catch(() => null);
   const nome = typeof body?.nome === "string" ? body.nome.trim() : undefined;
   const ativo = typeof body?.ativo === "boolean" ? body.ativo : undefined;
+  const ehOrganizador =
+    typeof body?.ehOrganizador === "boolean" ? body.ehOrganizador : undefined;
+  const telefone = typeof body?.telefone === "string" ? body.telefone : undefined;
 
-  if (nome === undefined && ativo === undefined) {
+  if (nome === undefined && ativo === undefined && ehOrganizador === undefined) {
     return NextResponse.json(
-      { error: "Informe nome e/ou ativo para atualizar." },
+      { error: "Informe nome, ativo e/ou ehOrganizador para atualizar." },
       { status: 400 },
     );
   }
@@ -44,8 +51,16 @@ export async function PATCH(
     if (ativo !== undefined) {
       jogador = await definirAtivoDoJogador(id, ativo);
     }
+    if (ehOrganizador !== undefined) {
+      jogador = await definirOrganizadorDoJogador(id, ehOrganizador, telefone);
+    }
   } catch (error) {
-    if (error instanceof OrganizadorNaoPodeSerDesativadoError) {
+    if (
+      error instanceof OrganizadorNaoPodeSerDesativadoError ||
+      error instanceof TelefoneObrigatorioParaOrganizadorError ||
+      error instanceof TelefoneJaCadastradoError ||
+      error instanceof UltimoOrganizadorNaoPodeSerRemovidoError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     throw error;

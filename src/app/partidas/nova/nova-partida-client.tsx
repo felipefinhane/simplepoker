@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { IconeCarregando } from "@/components/icone-carregando";
+import { ModalGerenciarJogadores } from "@/components/modal-gerenciar-jogadores";
 
 interface Jogador {
   id: number;
@@ -29,6 +30,7 @@ export function NovaPartidaClient({
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [cadastrandoJogador, setCadastrandoJogador] = useState(false);
+  const [gerenciandoJogadores, setGerenciandoJogadores] = useState(false);
 
   function alternar(jogadorId: number) {
     setSelecionados((atual) =>
@@ -111,18 +113,28 @@ export function NovaPartidaClient({
       </div>
 
       <section className="flex flex-col gap-stack-gap">
-        <div className="flex items-end justify-between">
+        <div className="flex items-end justify-between gap-2">
           <h3 className="text-headline-md text-on-surface">Participantes</h3>
-          <span
-            className={`rounded-lg px-3 py-1 text-label-data ${
-              faltam > 0
-                ? "bg-error-container/20 text-error"
-                : "bg-primary-container/20 text-primary"
-            }`}
-          >
-            {selecionados.length} selecionado{selecionados.length === 1 ? "" : "s"}
-            {faltam > 0 ? ` · faltam ${faltam}` : ""}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGerenciandoJogadores(true)}
+              className="flex items-center gap-1 text-label-sm text-on-surface-variant hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+              Gerenciar
+            </button>
+            <span
+              className={`rounded-lg px-3 py-1 text-label-data ${
+                faltam > 0
+                  ? "bg-error-container/20 text-error"
+                  : "bg-primary-container/20 text-primary"
+              }`}
+            >
+              {selecionados.length} selecionado{selecionados.length === 1 ? "" : "s"}
+              {faltam > 0 ? ` · faltam ${faltam}` : ""}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -221,6 +233,15 @@ export function NovaPartidaClient({
             ? `Selecione mais ${faltam} participante${faltam === 1 ? "" : "s"}`
             : "Criar Partida"}
       </button>
+
+      <ModalGerenciarJogadores
+        aberto={gerenciandoJogadores}
+        onFechar={() => setGerenciandoJogadores(false)}
+        onAtualizarAtivos={(ativos) => {
+          setJogadores(ativos);
+          setSelecionados((atual) => atual.filter((id) => ativos.some((j) => j.id === id)));
+        }}
+      />
     </form>
   );
 }
