@@ -61,7 +61,12 @@ export function NovaPartidaClient({
       }
 
       const jogador = corpo.jogador as Jogador;
-      setJogadores((atual) => [...atual, jogador].sort((a, b) => a.nome.localeCompare(b.nome)));
+      // Lista sempre 100% ativos — sem campo `ativo` aqui, então ordena
+      // só por nome (não faz sentido reusar `compararJogadoresPorAtivoENome`
+      // pra um grupo único).
+      setJogadores((atual) =>
+        [...atual, jogador].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+      );
       setSelecionados((atual) => [...atual, jogador.id]);
       setNovoNome("");
       setCadastrando(false);

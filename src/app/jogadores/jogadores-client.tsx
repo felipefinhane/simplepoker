@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { IconeCarregando } from "@/components/icone-carregando";
 import { formatarTelefone } from "@/lib/auth/telefone";
+import { compararJogadoresPorAtivoENome } from "@/lib/ordenar-jogadores";
 
 interface Jogador {
   id: number;
@@ -253,9 +254,9 @@ export function JogadoresClient({
         return;
       }
 
-      setJogadores((atual) =>
-        [...atual, corpo.jogador].sort((a, b) => a.nome.localeCompare(b.nome)),
-      );
+      // A ordenação de exibição (ativos primeiro, depois alfabético)
+      // acontece na renderização, não aqui — ver `jogadoresOrdenados`.
+      setJogadores((atual) => [...atual, corpo.jogador]);
       setNovoNome("");
     } finally {
       setEnviando(false);
@@ -328,6 +329,9 @@ export function JogadoresClient({
   }
 
   const ativos = jogadores.filter((j) => j.ativo).length;
+  // Ordenado na renderização (não no estado) — cobre toggle/renomear sem
+  // precisar lembrar de reordenar em cada handler. Ver ticket 45.
+  const jogadoresOrdenados = [...jogadores].sort(compararJogadoresPorAtivoENome);
 
   return (
     <div className="flex flex-col gap-section-margin">
@@ -384,7 +388,7 @@ export function JogadoresClient({
         </div>
 
         <div className="flex flex-col gap-2">
-          {jogadores.map((jogador) => (
+          {jogadoresOrdenados.map((jogador) => (
             <LinhaDeJogador
               key={jogador.id}
               jogador={jogador}

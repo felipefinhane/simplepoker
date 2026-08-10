@@ -92,10 +92,14 @@ export async function criarJogador(nome: string, atorId: number | null): Promise
   return linhaParaJogador(rows[0]);
 }
 
-/** Todos os Jogadores (ativos e desativados), para a tela de gestão. */
+/**
+ * Todos os Jogadores (ativos e desativados), para a tela de gestão —
+ * ativos primeiro, depois inativos; alfabético dentro de cada grupo (ver
+ * ticket 45). `ativo DESC` porque `true` vem antes de `false` nessa ordem.
+ */
 export async function listarJogadores(): Promise<Jogador[]> {
   const { rows } = await db.query<LinhaJogador>(
-    `SELECT ${COLUNAS_DO_JOGADOR} FROM jogadores ORDER BY nome`,
+    `SELECT ${COLUNAS_DO_JOGADOR} FROM jogadores ORDER BY ativo DESC, nome`,
   );
 
   return rows.map(linhaParaJogador);

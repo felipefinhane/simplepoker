@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconeCarregando } from "./icone-carregando";
+import { compararJogadoresPorAtivoENome } from "@/lib/ordenar-jogadores";
 
 interface JogadorResumo {
   id: number;
@@ -131,7 +132,7 @@ export function ModalGerenciarJogadores({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {jogadores?.map((jogador) => (
+              {[...jogadores].sort(compararJogadoresPorAtivoENome).map((jogador) => (
                 <div
                   key={jogador.id}
                   className={`flex items-center justify-between gap-3 rounded-lg border p-3 transition-opacity ${
