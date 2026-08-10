@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { IconeCarregando } from "@/components/icone-carregando";
 import { BotaoNotificacao } from "./botao-notificacao";
 import { BotaoPlayPause } from "./botao-play-pause";
 import { MENSAGEM_SEM_ESTRUTURA_DE_BLINDS, formatarTempo, useTimer } from "./use-timer";
@@ -18,7 +19,7 @@ export function TimerClient({
   partidaId: number;
   podeControlar: boolean;
 }) {
-  const { estado, erro, nivelMudouAgora, executarAcao } = useTimer(partidaId);
+  const { estado, erro, nivelMudouAgora, acaoEmAndamento, executarAcao } = useTimer(partidaId);
 
   if (!estado) return null;
 
@@ -83,25 +84,35 @@ export function TimerClient({
             <button
               type="button"
               onClick={() => executarAcao("voltar-nivel")}
-              disabled={estado.nivel === 0}
+              disabled={estado.nivel === 0 || acaoEmAndamento !== null}
               aria-label="Voltar nível"
               className="flex h-12 w-12 items-center justify-center rounded-full bg-surface/40 text-on-surface transition-colors hover:bg-surface/80 disabled:opacity-30"
             >
-              <span className="material-symbols-outlined">skip_previous</span>
+              {acaoEmAndamento === "voltar-nivel" ? (
+                <IconeCarregando />
+              ) : (
+                <span className="material-symbols-outlined">skip_previous</span>
+              )}
             </button>
             <BotaoPlayPause
               rodando={estado.rodando}
               tamanho="compacto"
+              carregando={acaoEmAndamento === "iniciar" || acaoEmAndamento === "pausar"}
+              desabilitado={acaoEmAndamento !== null}
               onClick={() => executarAcao(estado.rodando ? "pausar" : "iniciar")}
             />
             <button
               type="button"
               onClick={() => executarAcao("pular-nivel")}
-              disabled={!estado.proximoNivel}
+              disabled={!estado.proximoNivel || acaoEmAndamento !== null}
               aria-label="Pular nível"
               className="flex h-12 w-12 items-center justify-center rounded-full bg-surface/40 text-on-surface transition-colors hover:bg-surface/80 disabled:opacity-30"
             >
-              <span className="material-symbols-outlined">skip_next</span>
+              {acaoEmAndamento === "pular-nivel" ? (
+                <IconeCarregando />
+              ) : (
+                <span className="material-symbols-outlined">skip_next</span>
+              )}
             </button>
           </div>
         )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IconeCarregando } from "@/components/icone-carregando";
 import { useNotificacoesDoTimer } from "./use-notificacoes-do-timer";
 
 /**
@@ -63,9 +64,13 @@ export function BotaoNotificacao({
           inscrito ? "bg-secondary/20 text-secondary" : corInativa
         }`}
       >
-        <span className="material-symbols-outlined text-[20px]">
-          {inscrito ? "notifications_active" : erro ? "error" : "notifications"}
-        </span>
+        {carregando ? (
+          <IconeCarregando />
+        ) : (
+          <span className="material-symbols-outlined text-[20px]">
+            {inscrito ? "notifications_active" : erro ? "error" : "notifications"}
+          </span>
+        )}
       </button>
       {/* `erro` só existe depois de uma tentativa real (clique em
           "Ativar") — mostra na hora, sem precisar de outro toque pra

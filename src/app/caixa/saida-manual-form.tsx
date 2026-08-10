@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { IconeCarregando } from "@/components/icone-carregando";
 
 const CAMPO_CLASSE =
   "w-full rounded-lg border border-surface-variant bg-surface-container-highest px-3 py-2 text-body-md text-on-surface placeholder-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
@@ -100,7 +101,11 @@ export function SaidaManualForm({ temporadaId }: { temporadaId: number }) {
         disabled={enviando}
         className="flex h-touch-target-min w-full items-center justify-center gap-2 rounded-full border-2 border-secondary text-label-sm font-bold uppercase tracking-wider text-secondary transition-all hover:bg-secondary hover:text-on-secondary disabled:opacity-60 md:w-auto md:self-start md:px-8"
       >
-        <span className="material-symbols-outlined text-[20px]">add</span>
+        {enviando ? (
+          <IconeCarregando />
+        ) : (
+          <span className="material-symbols-outlined text-[20px]">add</span>
+        )}
         {enviando ? "Salvando..." : "Lançar Saída"}
       </button>
     </form>

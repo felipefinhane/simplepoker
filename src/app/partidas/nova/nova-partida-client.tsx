@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { IconeCarregando } from "@/components/icone-carregando";
 
 interface Jogador {
   id: number;
@@ -27,6 +28,7 @@ export function NovaPartidaClient({
   const [novoNome, setNovoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [cadastrandoJogador, setCadastrandoJogador] = useState(false);
 
   function alternar(jogadorId: number) {
     setSelecionados((atual) =>
@@ -41,24 +43,29 @@ export function NovaPartidaClient({
     const nome = novoNome.trim();
     if (!nome) return;
     setErro(null);
+    setCadastrandoJogador(true);
 
-    const resposta = await fetch("/api/jogadores", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome }),
-    });
-    const corpo = await resposta.json().catch(() => null);
+    try {
+      const resposta = await fetch("/api/jogadores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome }),
+      });
+      const corpo = await resposta.json().catch(() => null);
 
-    if (!resposta.ok) {
-      setErro(corpo?.error ?? "Não foi possível cadastrar o Jogador.");
-      return;
+      if (!resposta.ok) {
+        setErro(corpo?.error ?? "Não foi possível cadastrar o Jogador.");
+        return;
+      }
+
+      const jogador = corpo.jogador as Jogador;
+      setJogadores((atual) => [...atual, jogador].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setSelecionados((atual) => [...atual, jogador.id]);
+      setNovoNome("");
+      setCadastrando(false);
+    } finally {
+      setCadastrandoJogador(false);
     }
-
-    const jogador = corpo.jogador as Jogador;
-    setJogadores((atual) => [...atual, jogador].sort((a, b) => a.nome.localeCompare(b.nome)));
-    setSelecionados((atual) => [...atual, jogador.id]);
-    setNovoNome("");
-    setCadastrando(false);
   }
 
   async function criar(event: FormEvent) {
@@ -169,9 +176,10 @@ export function NovaPartidaClient({
               <button
                 type="button"
                 onClick={cadastrarNovoJogador}
-                disabled={!novoNome.trim()}
-                className="rounded-lg bg-secondary px-4 py-2 text-label-sm font-bold text-on-secondary disabled:opacity-40"
+                disabled={!novoNome.trim() || cadastrandoJogador}
+                className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-label-sm font-bold text-on-secondary disabled:opacity-40"
               >
+                {cadastrandoJogador && <IconeCarregando />}
                 Cadastrar
               </button>
             </div>
@@ -204,8 +212,9 @@ export function NovaPartidaClient({
       <button
         type="submit"
         disabled={enviando || faltam > 0}
-        className="flex h-14 items-center justify-center rounded-lg bg-secondary text-lg font-bold text-on-secondary shadow-[0_0_15px_rgba(233,195,73,0.2)] transition-colors hover:bg-secondary-fixed-dim disabled:cursor-not-allowed disabled:opacity-40"
+        className="flex h-14 items-center justify-center gap-2 rounded-lg bg-secondary text-lg font-bold text-on-secondary shadow-[0_0_15px_rgba(233,195,73,0.2)] transition-colors hover:bg-secondary-fixed-dim disabled:cursor-not-allowed disabled:opacity-40"
       >
+        {enviando && <IconeCarregando />}
         {enviando
           ? "Criando..."
           : faltam > 0

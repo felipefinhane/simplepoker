@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { IconeCarregando } from "@/components/icone-carregando";
 import type { AtualizacaoDeLancamento, LancamentoDaPartida, Partida } from "@/lib/partidas";
 import type { Jogador } from "@/lib/jogadores";
 
@@ -43,6 +44,7 @@ function LinhaDeLancamento({
   lancamento,
   ativos,
   todos,
+  salvando,
   onAtualizar,
   onSair,
 }: {
@@ -51,8 +53,10 @@ function LinhaDeLancamento({
   ativos: LancamentoDaPartida[];
   /** Todo mundo — o editor manual aceita qualquer Jogador como eliminador. */
   todos: LancamentoDaPartida[];
-  onAtualizar: (jogadorId: number, dados: AtualizacaoDeLancamento) => void;
-  onSair: (jogadorId: number, eliminadoPorJogadorId: number | null) => void;
+  /** Essa linha tem um PATCH em andamento (ver `salvandoJogadorId` no pai). */
+  salvando: boolean;
+  onAtualizar: (jogadorId: number, dados: AtualizacaoDeLancamento) => Promise<void>;
+  onSair: (jogadorId: number, eliminadoPorJogadorId: number | null) => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
   const [saindo, setSaindo] = useState(false);
@@ -117,24 +121,29 @@ function LinhaDeLancamento({
           <input
             type="checkbox"
             checked={lancamento.pagamento}
+            disabled={salvando}
             onChange={(event) =>
               onAtualizar(lancamento.jogadorId, { pagamento: event.target.checked })
             }
-            className="h-4 w-4 rounded border-outline-variant bg-surface-container-highest text-secondary"
+            className="h-4 w-4 rounded border-outline-variant bg-surface-container-highest text-secondary disabled:opacity-50"
           />
           Pagou
+          {salvando && <IconeCarregando tamanho={14} />}
         </label>
 
         <div className="ml-auto flex items-center gap-2">
           {!estaAtivo && (
             <button
               type="button"
+              disabled={salvando}
               onClick={() =>
                 onAtualizar(lancamento.jogadorId, { posicao: null, eliminadoPorJogadorId: null })
               }
-              className="flex items-center gap-1 rounded border border-outline-variant px-3 py-2 text-label-sm text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+              className="flex items-center gap-1 rounded border border-outline-variant px-3 py-2 text-label-sm text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-[16px]">undo</span>
+              {salvando ? <IconeCarregando tamanho={16} /> : (
+                <span className="material-symbols-outlined text-[16px]">undo</span>
+              )}
               Desfazer
             </button>
           )}
@@ -144,8 +153,9 @@ function LinhaDeLancamento({
               <>
                 <select
                   value={eliminadorEscolhido}
+                  disabled={salvando}
                   onChange={(event) => setEliminadorEscolhido(event.target.value)}
-                  className="rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-label-sm text-on-surface"
+                  className="rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-label-sm text-on-surface disabled:opacity-50"
                 >
                   <option value="">Quem eliminou?</option>
                   {ativos
@@ -158,22 +168,29 @@ function LinhaDeLancamento({
                 </select>
                 <button
                   type="button"
-                  onClick={() => {
-                    onSair(
+                  disabled={salvando}
+                  onClick={async () => {
+                    // Só fecha o fluxo "Saiu" depois que o pedido de
+                    // verdade terminar — fechar na hora (como era antes)
+                    // faz o botão "Saiu" reaparecer enquanto ainda está
+                    // salvando, parecendo que dava pra clicar de novo.
+                    await onSair(
                       lancamento.jogadorId,
                       eliminadorEscolhido ? Number(eliminadorEscolhido) : null,
                     );
                     setSaindo(false);
                     setEliminadorEscolhido("");
                   }}
-                  className="rounded border border-secondary/30 bg-secondary/10 px-3 py-1 text-label-sm text-secondary"
+                  className="flex items-center gap-1 rounded border border-secondary/30 bg-secondary/10 px-3 py-1 text-label-sm text-secondary disabled:opacity-50"
                 >
+                  {salvando && <IconeCarregando tamanho={14} />}
                   Confirmar
                 </button>
                 <button
                   type="button"
+                  disabled={salvando}
                   onClick={() => setSaindo(false)}
-                  className="text-label-sm text-on-surface-variant"
+                  className="text-label-sm text-on-surface-variant disabled:opacity-50"
                 >
                   Cancelar
                 </button>
@@ -206,6 +223,7 @@ function LinhaDeLancamento({
             <input
               type="number"
               min={1}
+              disabled={salvando}
               defaultValue={lancamento.posicao ?? ""}
               onBlur={(event) => {
                 const valor = event.target.value;
@@ -214,19 +232,20 @@ function LinhaDeLancamento({
                   onAtualizar(lancamento.jogadorId, { posicao });
                 }
               }}
-              className="w-16 rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-on-surface"
+              className="w-16 rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-on-surface disabled:opacity-50"
             />
           </label>
           <label className="flex items-center gap-2 text-label-sm text-on-surface-variant">
             Eliminado por
             <select
               value={lancamento.eliminadoPorJogadorId ?? ""}
+              disabled={salvando}
               onChange={(event) =>
                 onAtualizar(lancamento.jogadorId, {
                   eliminadoPorJogadorId: event.target.value ? Number(event.target.value) : null,
                 })
               }
-              className="rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-on-surface"
+              className="rounded border border-outline-variant bg-surface-container-highest px-2 py-1 text-on-surface disabled:opacity-50"
             >
               <option value="">—</option>
               {todos
@@ -262,6 +281,12 @@ export function PartidaEmAndamentoClient({
   const [erro, setErro] = useState<string | null>(null);
   const [premiacaoFinal, setPremiacaoFinal] = useState<Premiacao | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [salvandoData, setSalvandoData] = useState(false);
+  const [enviandoParticipante, setEnviandoParticipante] = useState(false);
+  const [cadastrandoJogador, setCadastrandoJogador] = useState(false);
+  // Qual linha de Jogador tem um PATCH/POST em andamento (Pagou, Desfazer,
+  // Saiu, editor manual) — ver `LinhaDeLancamento`.
+  const [salvandoJogadorId, setSalvandoJogadorId] = useState<number | null>(null);
 
   const ativos = partida.lancamentos.filter((l) => l.posicao === null);
   const semPosicao = ativos.length;
@@ -278,10 +303,15 @@ export function PartidaEmAndamentoClient({
 
   async function salvarData(event: FormEvent) {
     event.preventDefault();
-    const corpo = await executar(`/api/partidas/${partida.id}`, "PATCH", { data });
-    if (corpo) {
-      setPartida(corpo.partida as Partida);
-      setEditandoData(false);
+    setSalvandoData(true);
+    try {
+      const corpo = await executar(`/api/partidas/${partida.id}`, "PATCH", { data });
+      if (corpo) {
+        setPartida(corpo.partida as Partida);
+        setEditandoData(false);
+      }
+    } finally {
+      setSalvandoData(false);
     }
   }
 
@@ -289,13 +319,18 @@ export function PartidaEmAndamentoClient({
     event.preventDefault();
     if (!novoParticipanteId) return;
     const jogadorId = Number(novoParticipanteId);
-    const corpo = await executar(`/api/partidas/${partida.id}/participantes`, "POST", {
-      jogadorId,
-    });
-    if (corpo) {
-      setPartida(corpo.partida as Partida);
-      setFora((atual) => atual.filter((j) => j.id !== jogadorId));
-      setNovoParticipanteId("");
+    setEnviandoParticipante(true);
+    try {
+      const corpo = await executar(`/api/partidas/${partida.id}/participantes`, "POST", {
+        jogadorId,
+      });
+      if (corpo) {
+        setPartida(corpo.partida as Partida);
+        setFora((atual) => atual.filter((j) => j.id !== jogadorId));
+        setNovoParticipanteId("");
+      }
+    } finally {
+      setEnviandoParticipante(false);
     }
   }
 
@@ -303,36 +338,51 @@ export function PartidaEmAndamentoClient({
     event.preventDefault();
     const nome = novoJogadorNome.trim();
     if (!nome) return;
+    setCadastrandoJogador(true);
 
-    const criado = await executar("/api/jogadores", "POST", { nome });
-    if (!criado) return;
-    const jogador = criado.jogador as { id: number };
+    try {
+      const criado = await executar("/api/jogadores", "POST", { nome });
+      if (!criado) return;
+      const jogador = criado.jogador as { id: number };
 
-    const corpo = await executar(`/api/partidas/${partida.id}/participantes`, "POST", {
-      jogadorId: jogador.id,
-    });
-    if (corpo) {
-      setPartida(corpo.partida as Partida);
-      setNovoJogadorNome("");
+      const corpo = await executar(`/api/partidas/${partida.id}/participantes`, "POST", {
+        jogadorId: jogador.id,
+      });
+      if (corpo) {
+        setPartida(corpo.partida as Partida);
+        setNovoJogadorNome("");
+      }
+    } finally {
+      setCadastrandoJogador(false);
     }
   }
 
   async function atualizarLinha(jogadorId: number, dados: AtualizacaoDeLancamento) {
-    const corpo = await executar(
-      `/api/partidas/${partida.id}/lancamentos/${jogadorId}`,
-      "PATCH",
-      dados,
-    );
-    if (corpo) setPartida(corpo.partida as Partida);
+    setSalvandoJogadorId(jogadorId);
+    try {
+      const corpo = await executar(
+        `/api/partidas/${partida.id}/lancamentos/${jogadorId}`,
+        "PATCH",
+        dados,
+      );
+      if (corpo) setPartida(corpo.partida as Partida);
+    } finally {
+      setSalvandoJogadorId(null);
+    }
   }
 
   async function marcarSaida(jogadorId: number, eliminadoPorJogadorId: number | null) {
-    const corpo = await executar(
-      `/api/partidas/${partida.id}/lancamentos/${jogadorId}/sair`,
-      "POST",
-      { eliminadoPorJogadorId },
-    );
-    if (corpo) setPartida(corpo.partida as Partida);
+    setSalvandoJogadorId(jogadorId);
+    try {
+      const corpo = await executar(
+        `/api/partidas/${partida.id}/lancamentos/${jogadorId}/sair`,
+        "POST",
+        { eliminadoPorJogadorId },
+      );
+      if (corpo) setPartida(corpo.partida as Partida);
+    } finally {
+      setSalvandoJogadorId(null);
+    }
   }
 
   async function finalizar() {
@@ -360,17 +410,20 @@ export function PartidaEmAndamentoClient({
             />
             <button
               type="submit"
-              className="rounded bg-secondary px-3 py-1 text-label-sm text-on-secondary"
+              disabled={salvandoData}
+              className="flex items-center gap-2 rounded bg-secondary px-3 py-1 text-label-sm text-on-secondary disabled:opacity-60"
             >
+              {salvandoData && <IconeCarregando tamanho={14} />}
               Salvar
             </button>
             <button
               type="button"
+              disabled={salvandoData}
               onClick={() => {
                 setEditandoData(false);
                 setData(partida.data);
               }}
-              className="text-label-sm text-on-surface-variant"
+              className="text-label-sm text-on-surface-variant disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -403,6 +456,7 @@ export function PartidaEmAndamentoClient({
             lancamento={lancamento}
             ativos={ativos}
             todos={partida.lancamentos}
+            salvando={salvandoJogadorId === lancamento.jogadorId}
             onAtualizar={atualizarLinha}
             onSair={marcarSaida}
           />
@@ -426,9 +480,10 @@ export function PartidaEmAndamentoClient({
             </select>
             <button
               type="submit"
-              disabled={!novoParticipanteId}
-              className="rounded bg-secondary px-4 py-2 text-label-sm text-on-secondary disabled:opacity-40"
+              disabled={!novoParticipanteId || enviandoParticipante}
+              className="flex items-center gap-2 rounded bg-secondary px-4 py-2 text-label-sm text-on-secondary disabled:opacity-40"
             >
+              {enviandoParticipante && <IconeCarregando tamanho={16} />}
               Adicionar
             </button>
           </form>
@@ -443,9 +498,10 @@ export function PartidaEmAndamentoClient({
             />
             <button
               type="submit"
-              disabled={!novoJogadorNome.trim()}
-              className="rounded bg-secondary px-4 py-2 text-label-sm text-on-secondary disabled:opacity-40"
+              disabled={!novoJogadorNome.trim() || cadastrandoJogador}
+              className="flex items-center gap-2 rounded bg-secondary px-4 py-2 text-label-sm text-on-secondary disabled:opacity-40"
             >
+              {cadastrandoJogador && <IconeCarregando tamanho={16} />}
               Cadastrar
             </button>
           </form>
@@ -480,8 +536,9 @@ export function PartidaEmAndamentoClient({
         type="button"
         onClick={finalizar}
         disabled={enviando || semPosicao > 1}
-        className="min-h-touch-target-min w-full rounded-lg bg-secondary font-bold text-on-secondary transition-colors disabled:cursor-not-allowed disabled:bg-surface-variant disabled:text-on-surface-variant disabled:opacity-50"
+        className="flex min-h-touch-target-min w-full items-center justify-center gap-2 rounded-lg bg-secondary font-bold text-on-secondary transition-colors disabled:cursor-not-allowed disabled:bg-surface-variant disabled:text-on-surface-variant disabled:opacity-50"
       >
+        {enviando && <IconeCarregando />}
         Finalizar Partida
       </button>
       {semPosicao > 1 && (

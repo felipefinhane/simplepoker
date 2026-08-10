@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { IconeCarregando } from "@/components/icone-carregando";
 import { BotaoNotificacao } from "../botao-notificacao";
 import { BotaoPlayPause } from "../botao-play-pause";
 import { MENSAGEM_SEM_ESTRUTURA_DE_BLINDS, formatarTempo, useTimer } from "../use-timer";
@@ -10,22 +11,28 @@ function ControleDeIcone({
   rotulo,
   onClick,
   disabled,
+  carregando,
 }: {
   icone: string;
   rotulo: string;
   onClick: () => void;
   disabled?: boolean;
+  carregando?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled || carregando}
       aria-label={rotulo}
       className="group flex flex-col items-center justify-center text-on-surface-variant transition-colors hover:text-primary disabled:opacity-30"
     >
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface transition-colors group-hover:bg-surface-container-high">
-        <span className="material-symbols-outlined text-[28px]">{icone}</span>
+        {carregando ? (
+          <IconeCarregando tamanho={28} />
+        ) : (
+          <span className="material-symbols-outlined text-[28px]">{icone}</span>
+        )}
       </div>
       <span className="mt-1 text-label-sm">{rotulo}</span>
     </button>
@@ -45,7 +52,8 @@ export function TimerTelaCheiaClient({
   partidaId: number;
   podeControlar: boolean;
 }) {
-  const { estado, erro, executarAcao, executarAcaoComConfirmacao } = useTimer(partidaId);
+  const { estado, erro, acaoEmAndamento, executarAcao, executarAcaoComConfirmacao } =
+    useTimer(partidaId);
 
   if (!estado) return null;
 
@@ -136,23 +144,35 @@ export function TimerTelaCheiaClient({
                   "Reiniciar o Timer? Volta pro nível 1 com o tempo cheio.",
                 )
               }
+              disabled={acaoEmAndamento !== null && acaoEmAndamento !== "reiniciar"}
+              carregando={acaoEmAndamento === "reiniciar"}
             />
             <ControleDeIcone
               icone="skip_previous"
               rotulo="Voltar"
               onClick={() => executarAcao("voltar-nivel")}
-              disabled={estado.nivel === 0}
+              disabled={
+                estado.nivel === 0 ||
+                (acaoEmAndamento !== null && acaoEmAndamento !== "voltar-nivel")
+              }
+              carregando={acaoEmAndamento === "voltar-nivel"}
             />
             <BotaoPlayPause
               rodando={estado.rodando}
               tamanho="grande"
+              carregando={acaoEmAndamento === "iniciar" || acaoEmAndamento === "pausar"}
+              desabilitado={acaoEmAndamento !== null}
               onClick={() => executarAcao(estado.rodando ? "pausar" : "iniciar")}
             />
             <ControleDeIcone
               icone="skip_next"
               rotulo="Pular"
               onClick={() => executarAcao("pular-nivel")}
-              disabled={!estado.proximoNivel}
+              disabled={
+                !estado.proximoNivel ||
+                (acaoEmAndamento !== null && acaoEmAndamento !== "pular-nivel")
+              }
+              carregando={acaoEmAndamento === "pular-nivel"}
             />
             <ControleDeIcone
               icone="lock"
@@ -163,6 +183,8 @@ export function TimerTelaCheiaClient({
                   "Encerrar o Timer? Depois disso não dá mais pra controlar.",
                 )
               }
+              disabled={acaoEmAndamento !== null && acaoEmAndamento !== "encerrar"}
+              carregando={acaoEmAndamento === "encerrar"}
             />
           </div>
         )

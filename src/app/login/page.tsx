@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { IconeCarregando } from "@/components/icone-carregando";
 
 const CAMPO_CLASSE =
   "block w-full rounded-lg border border-outline-variant bg-surface-container-highest py-3 pl-10 pr-3 font-body-md text-body-md text-on-surface placeholder-on-surface-variant/50 transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
@@ -118,8 +119,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={enviando}
-            className="mt-2 flex h-touch-target-min items-center justify-center rounded-lg bg-secondary text-label-sm font-bold uppercase tracking-wider text-on-secondary transition-colors hover:bg-secondary-fixed disabled:opacity-60"
+            className="mt-2 flex h-touch-target-min items-center justify-center gap-2 rounded-lg bg-secondary text-label-sm font-bold uppercase tracking-wider text-on-secondary transition-colors hover:bg-secondary-fixed disabled:opacity-60"
           >
+            {enviando && <IconeCarregando />}
             {enviando ? "Entrando..." : "Entrar"}
           </button>
         </form>

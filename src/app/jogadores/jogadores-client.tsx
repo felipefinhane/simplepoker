@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { IconeCarregando } from "@/components/icone-carregando";
 
 interface Jogador {
   id: number;
@@ -169,6 +170,14 @@ export function JogadoresClient({
 
   async function alternarAtivo(id: number, ativo: boolean) {
     setErro(null);
+    // Otimista: o toggle é um checkbox controlado por `jogador.ativo`, e
+    // sem atualizar o estado local na hora, ele "pisca" — volta pra
+    // posição antiga por um instante (esperando o fetch) e só depois vira
+    // de vez — parece que o toque não registrou. Atualiza já, e desfaz se
+    // o servidor recusar.
+    const anterior = jogadores;
+    setJogadores((atual) => atual.map((j) => (j.id === id ? { ...j, ativo } : j)));
+
     const resposta = await fetch(`/api/jogadores/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -177,6 +186,7 @@ export function JogadoresClient({
     const corpo = await resposta.json().catch(() => null);
 
     if (!resposta.ok) {
+      setJogadores(anterior);
       setErro(corpo?.error ?? "Não foi possível atualizar.");
       return;
     }
@@ -208,7 +218,11 @@ export function JogadoresClient({
             disabled={enviando}
             className="flex h-14 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-headline-md font-bold text-on-secondary transition-colors hover:bg-secondary-fixed disabled:opacity-60 sm:h-auto"
           >
-            <span className="material-symbols-outlined font-bold">add</span>
+            {enviando ? (
+              <IconeCarregando />
+            ) : (
+              <span className="material-symbols-outlined font-bold">add</span>
+            )}
             Adicionar
           </button>
         </form>

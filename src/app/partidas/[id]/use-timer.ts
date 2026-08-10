@@ -92,6 +92,10 @@ export function useTimer(partidaId: number) {
   const [estado, setEstado] = useState<EstadoDoTimer | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [nivelMudouAgora, setNivelMudouAgora] = useState(false);
+  // Qual controle está com uma requisição em andamento (ou null) — guarda
+  // o "caminho" clicado (ex: "pular-nivel") pra o botão certo mostrar o
+  // spinner, em vez de travar/piscar todos ao mesmo tempo.
+  const [acaoEmAndamento, setAcaoEmAndamento] = useState<string | null>(null);
   const nivelAnteriorRef = useRef<number | null>(null);
 
   function avisarMudancaDeNivel() {
@@ -141,20 +145,25 @@ export function useTimer(partidaId: number) {
 
   async function executarAcao(caminho: string) {
     setErro(null);
-    const resposta = await fetch(`/api/partidas/${partidaId}/timer/${caminho}`, {
-      method: "POST",
-    });
-    const corpo = await resposta.json().catch(() => null);
+    setAcaoEmAndamento(caminho);
+    try {
+      const resposta = await fetch(`/api/partidas/${partidaId}/timer/${caminho}`, {
+        method: "POST",
+      });
+      const corpo = await resposta.json().catch(() => null);
 
-    if (!resposta.ok) {
-      setErro(corpo?.error ?? "Não foi possível.");
-      return;
+      if (!resposta.ok) {
+        setErro(corpo?.error ?? "Não foi possível.");
+        return;
+      }
+      if (nivelAnteriorRef.current !== null && corpo.nivel !== nivelAnteriorRef.current) {
+        avisarMudancaDeNivel();
+      }
+      nivelAnteriorRef.current = corpo.nivel;
+      setEstado(corpo);
+    } finally {
+      setAcaoEmAndamento(null);
     }
-    if (nivelAnteriorRef.current !== null && corpo.nivel !== nivelAnteriorRef.current) {
-      avisarMudancaDeNivel();
-    }
-    nivelAnteriorRef.current = corpo.nivel;
-    setEstado(corpo);
   }
 
   async function executarAcaoComConfirmacao(caminho: string, mensagem: string) {
@@ -162,5 +171,5 @@ export function useTimer(partidaId: number) {
     await executarAcao(caminho);
   }
 
-  return { estado, erro, nivelMudouAgora, executarAcao, executarAcaoComConfirmacao };
+  return { estado, erro, nivelMudouAgora, acaoEmAndamento, executarAcao, executarAcaoComConfirmacao };
 }

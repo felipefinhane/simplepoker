@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { IconeCarregando } from "@/components/icone-carregando";
 
 interface NivelDeBlind {
   blindPequeno: number;
@@ -118,7 +119,11 @@ function ModalEncerrarTemporada({
             onClick={onConfirmar}
             className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-error text-label-sm font-bold uppercase tracking-wide text-on-error transition-transform hover:bg-error/90 active:scale-[0.98] disabled:opacity-60"
           >
-            <span className="material-symbols-outlined text-[20px]">lock</span>
+            {enviando ? (
+              <IconeCarregando />
+            ) : (
+              <span className="material-symbols-outlined text-[20px]">lock</span>
+            )}
             {enviando ? "Encerrando..." : "Confirmar e Encerrar"}
           </button>
           <button
@@ -523,8 +528,9 @@ export function TemporadaClient({
         <button
           type="submit"
           disabled={enviando}
-          className="flex h-14 items-center justify-center rounded-lg bg-secondary text-lg font-bold text-on-secondary shadow-[0_0_15px_rgba(233,195,73,0.2)] transition-colors hover:bg-secondary-fixed-dim disabled:opacity-60"
+          className="flex h-14 items-center justify-center gap-2 rounded-lg bg-secondary text-lg font-bold text-on-secondary shadow-[0_0_15px_rgba(233,195,73,0.2)] transition-colors hover:bg-secondary-fixed-dim disabled:opacity-60"
         >
+          {enviando && <IconeCarregando />}
           {enviando
             ? "Salvando..."
             : modo === "criar"
