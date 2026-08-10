@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { buscarTemporadaAberta } from "@/lib/temporadas";
+import { listarPartidasDaTemporada, partidaEstaEditavelPeloOrganizador } from "@/lib/partidas";
+import { getOrganizadorLogado } from "@/lib/auth/organizador";
+import { TimerClient } from "@/app/partidas/[id]/timer-client";
 
 function formatarNumero(valor: number): string {
   return valor.toLocaleString("pt-BR");
@@ -14,12 +17,23 @@ function formatarDuracaoAcumulada(minutosTotais: number): string {
 
 /**
  * Estrutura de Blinds da Temporada atual — visualização pública e estática
- * (não é o Timer ao vivo de uma Partida, ticket 09/14; é só a tabela de
- * referência configurada nos Parâmetros da Temporada, ticket 05).
+ * (a tabela de referência configurada nos Parâmetros da Temporada, ticket
+ * 05) mais o Timer ao vivo da Partida em andamento, se houver (ticket 40)
+ * — pensado pra quem não conhece bem o app: em vez de precisar achar a
+ * Partida certa em "Partidas", quem só quer acompanhar o blind atual acha
+ * aqui direto, na mesma página que já ia olhar de qualquer forma.
  */
 export default async function BlindsPage() {
-  const temporada = await buscarTemporadaAberta();
+  const [temporada, organizador] = await Promise.all([
+    buscarTemporadaAberta(),
+    getOrganizadorLogado(),
+  ]);
   const niveis = temporada?.parametros.estruturaDeBlinds ?? [];
+  const partidas = temporada ? await listarPartidasDaTemporada(temporada.id) : [];
+  const partidaEmAndamento = partidas.find((p) => !p.finalizada) ?? null;
+  const podeControlarTimer = partidaEmAndamento
+    ? partidaEstaEditavelPeloOrganizador(partidaEmAndamento, Boolean(temporada?.aberta), Boolean(organizador))
+    : false;
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-section-margin px-container-padding py-6">
@@ -29,6 +43,10 @@ export default async function BlindsPage() {
           Níveis de blind e duração configurados para a Temporada atual.
         </p>
       </div>
+
+      {partidaEmAndamento && (
+        <TimerClient partidaId={partidaEmAndamento.id} podeControlar={podeControlarTimer} />
+      )}
 
       {!temporada && (
         <p className="rounded-lg border border-dashed border-outline-variant p-6 text-center text-body-md text-on-surface-variant">
@@ -92,7 +110,9 @@ export default async function BlindsPage() {
         <Link href="/partidas" className="text-primary hover:underline">
           Ver Partidas
         </Link>{" "}
-        — o Timer ao vivo de cada uma fica na página da própria Partida.
+        {partidaEmAndamento
+          ? "— resultados e detalhes de cada uma ficam por lá."
+          : "— o Timer ao vivo de uma Partida em andamento aparece aqui e também na página dela."}
       </p>
     </main>
   );
