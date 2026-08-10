@@ -4,7 +4,9 @@ import { buscarTemporadaPorId } from "@/lib/temporadas";
 import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
 import { calcularSaldoDaTemporada } from "@/lib/caixa";
+import { getOrganizadorLogado } from "@/lib/auth/organizador";
 import { RankingsDaTemporada } from "@/components/rankings-da-temporada";
+import { ReabrirTemporadaButton } from "./reabrir-temporada-button";
 
 function formatarData(data: string): string {
   const [ano, mes, dia] = data.slice(0, 10).split("-");
@@ -35,7 +37,10 @@ export default async function TemporadaHistoricaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const temporada = await buscarTemporadaPorId(Number(id));
+  const [temporada, organizador] = await Promise.all([
+    buscarTemporadaPorId(Number(id)),
+    getOrganizadorLogado(),
+  ]);
   // A Temporada aberta vive em `/` — aqui só faz sentido uma encerrada
   // (é o que `/historico` sempre linka), então trata a aberta como
   // "não encontrada" pra esta página.
@@ -126,6 +131,8 @@ export default async function TemporadaHistoricaPage({
           participantes: p.lancamentos.length,
         }))}
       />
+
+      {organizador && <ReabrirTemporadaButton temporadaId={temporada.id} />}
 
       <Link href="/historico" className="text-center text-primary hover:underline">
         ← Todas as Temporadas anteriores

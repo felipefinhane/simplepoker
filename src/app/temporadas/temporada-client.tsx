@@ -38,7 +38,17 @@ const BOTAO_ADICIONAR_CLASSE =
 const BOTAO_REMOVER_CLASSE =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-on-surface-variant transition-colors hover:bg-error-container/20 hover:text-error";
 
-/** Modal de confirmação pra Encerrar Temporada (ação irreversível). */
+/** O que precisa ser digitado pra liberar o botão — ver `ModalEncerrarTemporada`. */
+const PALAVRA_DE_CONFIRMACAO = "ENCERRAR";
+
+/**
+ * Modal de confirmação pra Encerrar Temporada — ação séria (congela os
+ * Parâmetros, bloqueia novas Partidas), mas não mais irreversível: dá pra
+ * reabrir depois em `/historico/[id]` (ver ticket 45), se encerrar tiver
+ * sido engano ou surgir mais uma Partida. Mesmo assim, digitar
+ * "ENCERRAR" pra liberar o botão — só um clique de confirmação (como
+ * era antes) é fácil demais de acontecer sem querer numa ação dessas.
+ */
 function ModalEncerrarTemporada({
   resumo,
   enviando,
@@ -50,6 +60,9 @@ function ModalEncerrarTemporada({
   onCancelar: () => void;
   onConfirmar: () => void;
 }) {
+  const [confirmacao, setConfirmacao] = useState("");
+  const liberado = confirmacao.trim().toUpperCase() === PALAVRA_DE_CONFIRMACAO;
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-surface-container-lowest/80 p-4 backdrop-blur-sm"
@@ -79,8 +92,9 @@ function ModalEncerrarTemporada({
 
         <div className="flex flex-col gap-6 p-6">
           <p id="modal-encerrar-descricao" className="text-center text-body-md text-on-surface-variant">
-            Esta ação é irreversível. Os Parâmetros ficam congelados e nenhuma
-            nova Partida poderá ser lançada nesta Temporada.
+            Os Parâmetros ficam congelados e nenhuma nova Partida poderá ser
+            lançada nesta Temporada. Dá pra reabrir depois em Histórico, se
+            precisar — mas evite encerrar sem certeza.
           </p>
 
           <div className="flex flex-col gap-3 rounded-xl border border-surface-bright bg-surface-container-low p-4">
@@ -110,14 +124,29 @@ function ModalEncerrarTemporada({
               </span>
             </div>
           </div>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-label-sm text-on-surface-variant">
+              Digite <strong className="text-on-surface">{PALAVRA_DE_CONFIRMACAO}</strong> pra
+              confirmar
+            </span>
+            <input
+              type="text"
+              value={confirmacao}
+              onChange={(event) => setConfirmacao(event.target.value)}
+              autoComplete="off"
+              autoCapitalize="characters"
+              className="w-full rounded-lg border border-surface-variant bg-surface-container-highest px-3 py-2 text-center text-body-md uppercase tracking-widest text-on-surface focus:border-error focus:outline-none focus:ring-1 focus:ring-error"
+            />
+          </label>
         </div>
 
         <div className="flex flex-col gap-stack-gap p-6 pt-0 sm:flex-row-reverse">
           <button
             type="button"
-            disabled={enviando}
+            disabled={enviando || !liberado}
             onClick={onConfirmar}
-            className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-error text-label-sm font-bold uppercase tracking-wide text-on-error transition-transform hover:bg-error/90 active:scale-[0.98] disabled:opacity-60"
+            className="flex h-14 flex-1 items-center justify-center gap-2 rounded-xl bg-error text-label-sm font-bold uppercase tracking-wide text-on-error transition-transform hover:bg-error/90 active:scale-[0.98] disabled:opacity-40"
           >
             {enviando ? (
               <IconeCarregando />
@@ -546,7 +575,7 @@ export function TemporadaClient({
             </h3>
             <p className="mb-4 text-body-md text-on-surface-variant">
               Encerra a Temporada atual, congela o ranking final e impede novas
-              edições. Esta ação é irreversível.
+              edições. Dá pra reabrir depois em Histórico, se precisar.
             </p>
             <button
               type="button"

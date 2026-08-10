@@ -19,6 +19,7 @@ export type AcaoDeAuditoria =
   | "lancamento.atualizado"
   | "caixa.saida_manual_lancada"
   | "temporada.encerrada"
+  | "temporada.reaberta"
   | "temporada.parametros_atualizados";
 
 export type EntidadeDeAuditoria = "jogador" | "lancamento" | "caixa_transacao" | "temporada";

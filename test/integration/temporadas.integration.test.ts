@@ -3,11 +3,13 @@ import { db } from "@/lib/db";
 import {
   JaExisteTemporadaAbertaError,
   TemporadaEncerradaError,
+  TemporadaJaAbertaError,
   buscarTemporadaAberta,
   criarTemporada,
   editarParametrosDaTemporada,
   encerrarTemporada,
   obterParametrosPadraoParaNovaTemporada,
+  reabrirTemporada,
 } from "@/lib/temporadas";
 
 const PARAMETROS_DE_TESTE = {
@@ -109,6 +111,61 @@ describe("editarParametrosDaTemporada / encerrarTemporada (contra Postgres real)
     const nova = await criarTemporada(PARAMETROS_DE_TESTE, null);
     expect(nova.aberta).toBe(true);
     expect(nova.id).not.toBe(temporada.id);
+  });
+});
+
+describe("reabrirTemporada (contra Postgres real)", () => {
+  it("reabre uma Temporada encerrada, zerando data_fim", async () => {
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await encerrarTemporada(temporada.id, null);
+
+    const reaberta = await reabrirTemporada(temporada.id, null);
+    expect(reaberta?.aberta).toBe(true);
+    expect(reaberta?.dataFim).toBeNull();
+  });
+
+  it("retorna null para um id que não existe", async () => {
+    expect(await reabrirTemporada(999999, null)).toBeNull();
+  });
+
+  it("recusa reabrir uma Temporada que já está aberta", async () => {
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+
+    await expect(reabrirTemporada(temporada.id, null)).rejects.toThrow(
+      TemporadaJaAbertaError,
+    );
+  });
+
+  it("recusa reabrir enquanto outra Temporada está aberta", async () => {
+    const primeira = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await encerrarTemporada(primeira.id, null);
+    await criarTemporada(PARAMETROS_DE_TESTE, null); // a segunda, aberta
+
+    await expect(reabrirTemporada(primeira.id, null)).rejects.toThrow(
+      JaExisteTemporadaAbertaError,
+    );
+  });
+
+  it("corrida real entre reabrir e criar uma nova Temporada: nunca ficam duas abertas", async () => {
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    await encerrarTemporada(temporada.id, null);
+
+    // Sem `await` entre as duas chamadas — mesmo motivo do teste de
+    // criação concorrente acima: força as duas a passarem pelo pré-check
+    // antes de qualquer escrita terminar, então quem decide é o índice
+    // único do banco.
+    const resultados = await Promise.allSettled([
+      reabrirTemporada(temporada.id, null),
+      criarTemporada(PARAMETROS_DE_TESTE, null),
+    ]);
+
+    const sucessos = resultados.filter((r) => r.status === "fulfilled");
+    expect(sucessos).toHaveLength(1);
+
+    const { rows } = await db.query<{ count: string }>(
+      "SELECT count(*) FROM temporadas WHERE aberta = true",
+    );
+    expect(rows[0].count).toBe("1");
   });
 });
 

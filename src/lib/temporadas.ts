@@ -75,7 +75,7 @@ export function serializarTemporada(temporada: Temporada) {
 
 export class JaExisteTemporadaAbertaError extends Error {
   constructor() {
-    super("Já existe uma Temporada aberta — encerre-a antes de criar outra.");
+    super("Já existe uma Temporada aberta — encerre-a primeiro.");
     this.name = "JaExisteTemporadaAbertaError";
   }
 }
@@ -84,6 +84,13 @@ export class TemporadaEncerradaError extends Error {
   constructor() {
     super("Esta Temporada está encerrada e não pode mais ser editada.");
     this.name = "TemporadaEncerradaError";
+  }
+}
+
+export class TemporadaJaAbertaError extends Error {
+  constructor() {
+    super("Esta Temporada já está aberta.");
+    this.name = "TemporadaJaAbertaError";
   }
 }
 
@@ -393,10 +400,59 @@ export async function encerrarTemporada(
     [id, atorId],
   );
 
-  // Irreversível — congela a Temporada de vez. Ver ticket 44.
+  // Congela a Temporada — dá pra reabrir depois (`reabrirTemporada`, ver
+  // ticket 45) se fechou por engano ou vai ter mais uma Partida. Ver
+  // ticket 44 (log de auditoria).
   await registrarEvento(null, {
     jogadorId: atorId,
     acao: "temporada.encerrada",
+    entidadeTipo: "temporada",
+    entidadeId: id,
+  });
+
+  return linhaParaTemporada(rows[0]);
+}
+
+/**
+ * Reabre uma Temporada encerrada — pra quando encerrar foi engano, ou vai
+ * ter mais uma Partida na Temporada que já tinha sido fechada (ticket 45).
+ * Retorna null se o id não existir; lança `TemporadaJaAbertaError` se ela
+ * já estiver aberta, ou `JaExisteTemporadaAbertaError` se **outra**
+ * Temporada estiver aberta agora (só pode existir uma por vez — precisa
+ * encerrar essa outra antes).
+ */
+export async function reabrirTemporada(
+  id: number,
+  atorId: number | null,
+): Promise<Temporada | null> {
+  const atual = await buscarTemporadaPorId(id);
+  if (!atual) return null;
+  if (atual.aberta) throw new TemporadaJaAbertaError();
+
+  const jaAberta = await buscarTemporadaAberta();
+  if (jaAberta) throw new JaExisteTemporadaAbertaError();
+
+  // O pré-check acima é só pra devolver um erro amigável no caso comum —
+  // quem garante mesmo é o índice único parcial `temporada_aberta_unica`
+  // (mesmo padrão de `criarTemporada`): se outra Temporada for aberta
+  // bem entre o check e este UPDATE, o banco recusa e cai aqui.
+  let rows: LinhaTemporada[];
+  try {
+    ({ rows } = await db.query<LinhaTemporada>(
+      `UPDATE temporadas
+       SET aberta = true, data_fim = NULL,
+           atualizado_por_jogador_id = $2, atualizado_em = now()
+       WHERE id = $1 RETURNING *`,
+      [id, atorId],
+    ));
+  } catch (error) {
+    if (ehViolacaoDeUnicidade(error)) throw new JaExisteTemporadaAbertaError();
+    throw error;
+  }
+
+  await registrarEvento(null, {
+    jogadorId: atorId,
+    acao: "temporada.reaberta",
     entidadeTipo: "temporada",
     entidadeId: id,
   });
