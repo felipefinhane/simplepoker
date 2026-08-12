@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { criarJogador } from "@/lib/jogadores";
 import { criarTemporada } from "@/lib/temporadas";
 import { atualizarLancamento, criarPartida, finalizarPartida } from "@/lib/partidas";
-import { calcularRankingsDaTemporada } from "@/lib/rankings";
+import { calcularProjecaoDeRanking, calcularRankingsDaTemporada } from "@/lib/rankings";
 
 const PARAMETROS_DE_TESTE = {
   tabelaDePontos: [
@@ -147,5 +147,52 @@ describe("calcularRankingsDaTemporada (contra Postgres real)", () => {
 
     expect(rankings?.rankingDePontuacao).toEqual([]);
     expect(rankings?.rankingCarrasco).toEqual([]);
+  });
+});
+
+describe("calcularProjecaoDeRanking (ticket 50, contra Postgres real)", () => {
+  it("retorna null para uma Temporada que não existe", async () => {
+    expect(await calcularProjecaoDeRanking(999999, 1, 10)).toBeNull();
+  });
+
+  it("soma o total já oficial da Temporada com os pontos desta Partida", async () => {
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const jogadores = await Promise.all(
+      ["Ana", "Beto", "Caio", "Dedé", "Elis"].map((n) => criarJogador(`${n} de Teste`, null)),
+    );
+    const [ana, beto, caio, dede, elis] = jogadores.map((j) => j.id);
+
+    // Partida 1 (finalizada): Ana 1º = 25+1(própria alma) = 26 pontos.
+    const partida1 = await criarPartida("2026-01-01", [ana, beto, caio, dede, elis], null);
+    await finalizarComResultado(partida1.id, [
+      { jogadorId: ana, posicao: 1 },
+      { jogadorId: beto, posicao: 2 },
+      { jogadorId: caio, posicao: 3 },
+      { jogadorId: dede, posicao: 4 },
+      { jogadorId: elis, posicao: 5 },
+    ]);
+
+    // Ana já tem 26 pontos oficiais na Temporada; nesta 2ª Partida (ainda
+    // em andamento) ela acabou de sair em 4º, valendo 12 pontos.
+    const projecao = await calcularProjecaoDeRanking(temporada.id, ana, 12);
+
+    expect(projecao).toEqual({
+      totalAtualNaTemporada: 26,
+      pontosDestaPartida: 12,
+      totalProjetado: 38,
+    });
+  });
+
+  it("considera 0 de base pra quem ainda não tem nenhuma Partida finalizada na Temporada", async () => {
+    const temporada = await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const novato = await criarJogador("Novato de Teste", null);
+
+    const projecao = await calcularProjecaoDeRanking(temporada.id, novato.id, 15);
+
+    expect(projecao).toEqual({
+      totalAtualNaTemporada: 0,
+      pontosDestaPartida: 15,
+      totalProjetado: 15,
+    });
   });
 });

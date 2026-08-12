@@ -107,3 +107,45 @@ export async function calcularRankingsDaTemporada(
     rankingCarrasco: calcularRankingCarrasco(agregados).map(comNome),
   };
 }
+
+/** Projeção de quanto um Jogador teria no Ranking de Pontuação, ver `calcularProjecaoDeRanking`. */
+export interface ProjecaoDeRanking {
+  totalAtualNaTemporada: number;
+  pontosDestaPartida: number;
+  totalProjetado: number;
+}
+
+/** Projeção por Jogador, ver `calcularProjecaoDeRanking` — só entram os que já têm Posição definida (já saíram). */
+export type ProjecoesPorJogador = Record<number, ProjecaoDeRanking>;
+
+/**
+ * Quanto o Jogador teria de Pontos no Ranking de Pontuação da Temporada se
+ * a Partida em andamento fosse contabilizada agora — soma o total já
+ * oficial (só Partidas finalizadas, ver `calcularRankingsDaTemporada`) com
+ * os Pontos que ele já garantiu nesta Partida (`pontosDestaPartida`, que
+ * quem chama pega de `LancamentoDaPartida.pontos` — só existe depois que
+ * ele já tem Posição definida, ou seja, já saiu). Ticket 50.
+ *
+ * É uma **projeção**, não o Ranking de verdade: os demais participantes
+ * ainda ativos nesta Partida podem terminar com mais Pontos e mudar a
+ * posição dele no ranking depois que a Partida for finalizada — por isso
+ * só devolve o total, não uma posição no ranking (mostrar uma posição
+ * ainda não definitiva enganaria mais do que ajudaria).
+ */
+export async function calcularProjecaoDeRanking(
+  temporadaId: number,
+  jogadorId: number,
+  pontosDestaPartida: number,
+): Promise<ProjecaoDeRanking | null> {
+  const rankings = await calcularRankingsDaTemporada(temporadaId);
+  if (!rankings) return null;
+
+  const totalAtualNaTemporada =
+    rankings.rankingDePontuacao.find((entrada) => entrada.jogadorId === jogadorId)?.totalPontos ?? 0;
+
+  return {
+    totalAtualNaTemporada,
+    pontosDestaPartida,
+    totalProjetado: totalAtualNaTemporada + pontosDestaPartida,
+  };
+}

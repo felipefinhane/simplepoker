@@ -7,8 +7,12 @@ import {
 } from "@/lib/partidas";
 import { buscarTemporadaPorId } from "@/lib/temporadas";
 import { listarJogadoresAtivos } from "@/lib/jogadores";
+import { calcularProjecaoDeRanking, type ProjecoesPorJogador } from "@/lib/rankings";
+import { formatarMensagemResultadoPartida } from "@/lib/whatsapp";
+import { BotaoExportarWhatsapp } from "@/components/botao-exportar-whatsapp";
 import { PartidaEmAndamentoClient } from "./partida-em-andamento-client";
 import { TimerClient } from "./timer-client";
+import { RefreshAutomaticoPartida } from "./refresh-automatico-partida";
 
 function inicial(nome: string): string {
   return nome.trim().charAt(0).toUpperCase();
@@ -21,7 +25,14 @@ function corDoBadge(posicao: number | null): string {
   return "bg-surface-container-highest text-on-surface-variant border-transparent";
 }
 
-function ResultadoDaPartida({ lancamentos }: { lancamentos: LancamentoDaPartida[] }) {
+function ResultadoDaPartida({
+  lancamentos,
+  projecoes,
+}: {
+  lancamentos: LancamentoDaPartida[];
+  /** Ver `ProjecoesPorJogador` — vazio numa Partida já finalizada (o Ranking oficial já reflete o resultado). */
+  projecoes: ProjecoesPorJogador;
+}) {
   const ordenados = [...lancamentos].sort((a, b) => {
     if (a.posicao === null) return 1;
     if (b.posicao === null) return -1;
@@ -30,40 +41,48 @@ function ResultadoDaPartida({ lancamentos }: { lancamentos: LancamentoDaPartida[
 
   return (
     <div className="flex flex-col gap-2">
-      {ordenados.map((lancamento) => (
-        <div
-          key={lancamento.jogadorId}
-          className="flex items-center gap-4 rounded-lg border border-surface-container-high bg-surface-container-low p-3"
-        >
+      {ordenados.map((lancamento) => {
+        const projecao = projecoes[lancamento.jogadorId];
+        return (
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-label-data font-bold ${corDoBadge(lancamento.posicao)}`}
+            key={lancamento.jogadorId}
+            className="flex items-center gap-4 rounded-lg border border-surface-container-high bg-surface-container-low p-3"
           >
-            {lancamento.posicao ?? "—"}
-          </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-body-md font-bold text-on-surface">
-            {inicial(lancamento.nome)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-body-md font-semibold text-on-surface">
-              {lancamento.nome}
+            <div
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-label-data font-bold ${corDoBadge(lancamento.posicao)}`}
+            >
+              {lancamento.posicao ?? "—"}
             </div>
-            {lancamento.eliminadoPorNome && (
-              <div className="truncate text-xs text-on-surface-variant">
-                Eliminado por: {lancamento.eliminadoPorNome}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-container-highest text-body-md font-bold text-on-surface">
+              {inicial(lancamento.nome)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-body-md font-semibold text-on-surface">
+                {lancamento.nome}
               </div>
-            )}
-          </div>
-          <div className="flex shrink-0 flex-col items-end">
-            <div className="text-label-data font-bold text-on-surface">
-              {lancamento.pontos ?? "—"} pts
+              {lancamento.eliminadoPorNome && (
+                <div className="truncate text-xs text-on-surface-variant">
+                  Eliminado por: {lancamento.eliminadoPorNome}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-error">
-              <span className="material-symbols-outlined text-[14px]">skull</span>
-              {lancamento.almas}
+            <div className="flex shrink-0 flex-col items-end">
+              <div className="text-label-data font-bold text-on-surface">
+                {lancamento.pontos ?? "—"} pts
+              </div>
+              <div className="flex items-center gap-1 text-xs text-error">
+                <span className="material-symbols-outlined text-[14px]">skull</span>
+                {lancamento.almas}
+              </div>
+              {projecao && (
+                <div className="mt-0.5 text-[11px] text-on-surface-variant">
+                  → {projecao.totalProjetado} pts na Temporada
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -93,8 +112,26 @@ export default async function PartidaPage({
       )
     : [];
 
+  // Projeção do Ranking de Pontuação (ticket 50) — só enquanto a Partida
+  // está em andamento (finalizada, o Ranking oficial já é o resultado de
+  // verdade) e só pra quem já tem Posição definida (já saiu).
+  const projecoes: ProjecoesPorJogador = {};
+  if (!partida.finalizada) {
+    await Promise.all(
+      partida.lancamentos
+        .filter((l): l is LancamentoDaPartida & { pontos: number } => l.pontos !== null)
+        .map(async (l) => {
+          const projecao = await calcularProjecaoDeRanking(partida.temporadaId, l.jogadorId, l.pontos);
+          if (projecao) projecoes[l.jogadorId] = projecao;
+        }),
+    );
+  }
+
   return (
     <main className="px-container-padding py-6">
+      {/* Sem UI própria — ver o componente (ticket 52). */}
+      <RefreshAutomaticoPartida ativo={!partida.finalizada} />
+
       <div className="mb-section-margin flex flex-col items-center gap-1 text-center">
         <h1 className="text-headline-md text-on-surface">Partida</h1>
         <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-high px-4 py-2 text-label-data text-on-surface-variant">
@@ -111,13 +148,24 @@ export default async function PartidaPage({
       {/* Partida finalizada não precisa mais de Timer — o jogo já acabou. */}
       {!partida.finalizada && <TimerClient partidaId={partida.id} podeControlar={podeEditar} />}
 
+      {/* Exportar pro WhatsApp (ticket 51) — só depois de finalizada, o
+          resultado em andamento ainda pode mudar. */}
+      {partida.finalizada && (
+        <div className="mb-4 flex justify-center">
+          <BotaoExportarWhatsapp
+            mensagem={formatarMensagemResultadoPartida(partida.data, partida.lancamentos)}
+          />
+        </div>
+      )}
+
       {podeEditar ? (
         <PartidaEmAndamentoClient
           partida={partida}
           jogadoresForaDaPartida={jogadoresForaDaPartida}
+          projecoes={projecoes}
         />
       ) : (
-        <ResultadoDaPartida lancamentos={partida.lancamentos} />
+        <ResultadoDaPartida lancamentos={partida.lancamentos} projecoes={projecoes} />
       )}
     </main>
   );

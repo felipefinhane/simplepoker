@@ -6,6 +6,7 @@ import { IconeCarregando } from "@/components/icone-carregando";
 import { ModalGerenciarJogadores } from "@/components/modal-gerenciar-jogadores";
 import type { AtualizacaoDeLancamento, LancamentoDaPartida, Partida } from "@/lib/partidas";
 import type { Jogador } from "@/lib/jogadores";
+import type { ProjecaoDeRanking, ProjecoesPorJogador } from "@/lib/rankings";
 
 interface Premiacao {
   primeiro: number;
@@ -48,6 +49,7 @@ function LinhaDeLancamento({
   salvando,
   onAtualizar,
   onSair,
+  projecao,
 }: {
   lancamento: LancamentoDaPartida;
   /** Só os ainda ativos — opções válidas pro fluxo rápido "Saiu". */
@@ -58,6 +60,8 @@ function LinhaDeLancamento({
   salvando: boolean;
   onAtualizar: (jogadorId: number, dados: AtualizacaoDeLancamento) => Promise<void>;
   onSair: (jogadorId: number, eliminadoPorJogadorId: number | null) => Promise<void>;
+  /** Ticket 50 — só existe pra quem já saiu (tem Posição definida). */
+  projecao?: ProjecaoDeRanking;
 }) {
   const [editando, setEditando] = useState(false);
   const [saindo, setSaindo] = useState(false);
@@ -114,6 +118,11 @@ function LinhaDeLancamento({
             <span className="material-symbols-outlined text-[14px]">skull</span>
             {lancamento.almas}
           </div>
+          {projecao && (
+            <div className="mt-0.5 text-[11px] text-on-surface-variant">
+              → {projecao.totalProjetado} pts na Temporada
+            </div>
+          )}
         </div>
       </div>
 
@@ -267,13 +276,34 @@ function LinhaDeLancamento({
 export function PartidaEmAndamentoClient({
   partida: partidaInicial,
   jogadoresForaDaPartida: foraInicial,
+  projecoes,
 }: {
   partida: Partida;
   jogadoresForaDaPartida: Jogador[];
+  /** Ticket 50, recalculada a cada `router.refresh()` (ticket 52) — server-side, não aqui. */
+  projecoes: ProjecoesPorJogador;
 }) {
   const router = useRouter();
   const [partida, setPartida] = useState(partidaInicial);
   const [fora, setFora] = useState<{ id: number; nome: string }[]>(foraInicial);
+
+  // Resync durante a renderização (não num efeito — padrão recomendado
+  // pelo próprio React pra "ajustar estado quando um prop muda", evita o
+  // vai-e-volta de um efeito chamando setState): `useState(partidaInicial)`
+  // só usa o valor inicial no primeiro mount, então sem isso o refresh
+  // automático (ticket 52, `router.refresh()` no pai) atualizaria os props
+  // do Server Component mas essa cópia local ficaria parada no que já
+  // tinha ao montar. Mesma lógica pra `fora`.
+  const [partidaAnterior, setPartidaAnterior] = useState(partidaInicial);
+  if (partidaInicial !== partidaAnterior) {
+    setPartidaAnterior(partidaInicial);
+    setPartida(partidaInicial);
+  }
+  const [foraAnterior, setForaAnterior] = useState(foraInicial);
+  if (foraInicial !== foraAnterior) {
+    setForaAnterior(foraInicial);
+    setFora(foraInicial);
+  }
   const [editandoData, setEditandoData] = useState(false);
   const [data, setData] = useState(partida.data);
   const [adicionando, setAdicionando] = useState(false);
@@ -471,6 +501,7 @@ export function PartidaEmAndamentoClient({
             salvando={salvandoJogadorId === lancamento.jogadorId}
             onAtualizar={atualizarLinha}
             onSair={marcarSaida}
+            projecao={projecoes[lancamento.jogadorId]}
           />
         ))}
       </div>

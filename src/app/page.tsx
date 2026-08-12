@@ -2,7 +2,15 @@ import Link from "next/link";
 import { buscarTemporadaAberta } from "@/lib/temporadas";
 import { listarPartidasDaTemporada } from "@/lib/partidas";
 import { calcularRankingsDaTemporada } from "@/lib/rankings";
+import { formatarMensagemRankingGeral } from "@/lib/whatsapp";
 import { RankingsDaTemporada } from "@/components/rankings-da-temporada";
+import { BotaoExportarWhatsapp } from "@/components/botao-exportar-whatsapp";
+
+/** dd/mm/aaaa — só pro texto da mensagem do WhatsApp (ticket 51), formato diferente do badge acima (que já usa `YYYY-MM-DD` cru). */
+function formatarDataParaWhatsapp(dataIso: string): string {
+  const [ano, mes, dia] = dataIso.slice(0, 10).split("-");
+  return `${dia}/${mes}/${ano}`;
+}
 
 export default async function Home() {
   const temporada = await buscarTemporadaAberta();
@@ -59,15 +67,27 @@ export default async function Home() {
           Nenhuma Temporada aberta no momento.
         </p>
       ) : (
-        <RankingsDaTemporada
-          rankingDePontuacao={rankings.rankingDePontuacao}
-          rankingCarrasco={rankings.rankingCarrasco}
-          partidas={partidas.map((p) => ({
-            id: p.id,
-            data: p.data,
-            participantes: p.lancamentos.length,
-          }))}
-        />
+        <>
+          {rankings.rankingDePontuacao.length > 0 && (
+            <div className="mb-section-margin flex justify-end">
+              <BotaoExportarWhatsapp
+                mensagem={formatarMensagemRankingGeral(
+                  rankings.rankingDePontuacao,
+                  formatarDataParaWhatsapp(temporada.dataInicio),
+                )}
+              />
+            </div>
+          )}
+          <RankingsDaTemporada
+            rankingDePontuacao={rankings.rankingDePontuacao}
+            rankingCarrasco={rankings.rankingCarrasco}
+            partidas={partidas.map((p) => ({
+              id: p.id,
+              data: p.data,
+              participantes: p.lancamentos.length,
+            }))}
+          />
+        </>
       )}
     </main>
   );
