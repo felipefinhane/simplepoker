@@ -75,7 +75,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             versões de iOS anteriores ao Safari 17.4 ainda exigem pra abrir
             em tela cheia (sem barra de endereço) a partir da Tela de Início. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        {/* Modo daltonismo (ticket 53): tem que rodar antes do primeiro
+        {/* Modo Daltônico (ticket 53): tem que rodar antes do primeiro
             paint, senão a paleta padrão pisca por uma fração de segundo
             antes de trocar — React só reconciliaria isso depois de
             hidratar. `dangerouslySetInnerHTML` (não um handler) porque

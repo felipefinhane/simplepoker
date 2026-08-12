@@ -26,9 +26,14 @@ function definirAtivo(valor: boolean) {
 }
 
 /**
- * Modo daltonismo (ticket 53) — troca a paleta verde/vermelho (a mais
+ * Modo Daltônico (ticket 53) — troca a paleta verde/vermelho (a mais
  * difícil de distinguir em deuteranopia/protanopia) por azul/laranja, via
- * `html[data-daltonismo="true"]` (ver globals.css). Preferência 100%
+ * `html[data-daltonismo="true"]` (ver globals.css). Nome "Modo Daltônico"
+ * (adjetivo, não "Modo Daltonismo") segue o padrão usado em Acessibilidade
+ * do iOS/Android/Windows e na maioria dos jogos localizados em PT-BR — o
+ * termo que quem já mexeu numa configuração assim antes reconhece de cara.
+ * Chave interna (`localStorage`/`data-daltonismo`) continua a mesma, só o
+ * texto visível mudou. Preferência 100%
  * local (`localStorage`), sem servidor — é do dispositivo, não da conta.
  *
  * `useSyncExternalStore`, não `useState`+`useEffect`: o valor de verdade
@@ -51,7 +56,7 @@ export function ToggleDaltonismo() {
       <span className="flex items-center gap-3">
         <span className="material-symbols-outlined text-on-surface-variant">palette</span>
         <span>
-          <span className="block text-body-md text-on-surface">Modo daltonismo</span>
+          <span className="block text-body-md text-on-surface">Modo Daltônico</span>
           <span className="block text-label-sm text-on-surface-variant">
             Troca a paleta de cores por uma com mais contraste entre verde e vermelho.
           </span>
