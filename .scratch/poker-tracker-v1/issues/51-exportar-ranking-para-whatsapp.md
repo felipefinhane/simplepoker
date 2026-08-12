@@ -39,7 +39,7 @@ O Organizador pediu pra melhorar o formato da exportação **da Partida** (não 
 - [x] `montarTabela` (novo helper genérico em `whatsapp.ts`): larguras de coluna calculadas a partir do conteúdo de verdade (nomes reais, não um tamanho fixo chutado), alinhamento configurável por coluna (`Pts` à direita, resto à esquerda)
 - [x] Separador de cabeçalho usa hífen simples (`-`), não `─` (box drawing) — largura garantidamente fixa em qualquer fonte monoespaçada; o caractere de desenho de caixa às vezes não é, dependendo da fonte do telefone de quem recebe
 - [x] Nova coluna "Eliminado por" — `LinhaDePartidaParaExportar` ganhou `eliminadoPorNome: string | null` (`—` quando null: 1º/2º guardaram a própria Alma, ou o dado não foi registrado). `partida.lancamentos` já tinha esse campo (`LancamentoDaPartida.eliminadoPorNome`), então a chamada em `page.tsx` não precisou mudar — só o tipo em `whatsapp.ts` passou a exigi-lo
-- [x] Ranking geral (`formatarMensagemRankingGeral`) **não** mudou — o pedido foi só sobre a exportação da Partida
+- [x] Ranking geral (`formatarMensagemRankingGeral`) não mudou nesta rodada — o pedido foi só sobre a exportação da Partida (ver ajuste seguinte, pedido logo depois)
 
 Exemplo real gerado (`npx tsx -e`, não é print de tela, mas é a saída de verdade da função):
 
@@ -61,3 +61,30 @@ _Poker dos Amigos_
 ```
 
 `npm test` (59/59, com os 2 casos novos/reescritos de `formatarMensagemResultadoPartida`), `npm run test:integration` (91/91), lint e `tsc --noEmit` limpos.
+
+### Ajuste 2 — Ranking geral também vira tabela
+
+Pedido seguinte do Organizador: "melhorar a formatação do ranking também".
+
+- [x] `formatarMensagemRankingGeral` reescrita no mesmo padrão da Partida: tabela dentro de bloco monoespaçado, reaproveitando `montarTabela`/`formatarPosicao` (já existiam, sem duplicar nada) — colunas `Pos`/`Jogador`/`Pts`/`Almas`, com Almas nova na exportação (a tela já mostra os dois, a mensagem não mostrava)
+- [x] `LinhaDeRankingParaExportar` ganhou `totalAlmas: number` — `EntradaDeRanking` (o que a Home já passa) já tinha esse campo, não precisou mudar `page.tsx`
+- [x] Medalha do 1º lugar saiu de dentro da tabela (mesmo motivo da Partida — desalinha) e virou uma linha "🥇 Líder: *Fulano*" acima dela
+
+Exemplo real gerado:
+
+```
+🏆 *Ranking da Temporada* (desde 03/02/2026)
+🥇 Líder: *Felipe*
+
+Pos  Jogador    Pts  Almas
+--------------------------
+1º   Felipe      46      5
+2º   Rodrigo     45      8
+3º   Ana Paula   40      3
+4º   Dede        30      1
+5º   Elis        22      0
+
+_Poker dos Amigos_
+```
+
+`npm test` (60/60), `npm run test:integration` (91/91), lint e `tsc --noEmit` limpos.

@@ -6,14 +6,13 @@
  * próprio WhatsApp (`*negrito*`, `_itálico_`), não HTML/Markdown comum.
  */
 
-const MEDALHAS = ["🥇", "🥈", "🥉"];
-
+/**
+ * Só texto puro (`1º`, `2º`...), nunca emoji de medalha — dentro da tabela
+ * monoespaçada (ver `montarTabela`) um emoji desalinharia as colunas
+ * (largura variável mesmo em fonte monoespaçada). A medalha do 1º lugar
+ * aparece à parte, na linha de destaque acima da tabela.
+ */
 function formatarPosicao(indice: number): string {
-  return MEDALHAS[indice] ?? `${indice + 1}º`;
-}
-
-/** Só pra dentro da tabela monoespaçada — lá o emoji de medalha desalinha as colunas (largura variável, ver `montarTabela`). */
-function formatarPosicaoDeTabela(indice: number): string {
   return `${indice + 1}º`;
 }
 
@@ -63,21 +62,36 @@ function montarTabela(colunas: ColunaDeTabela[], linhas: string[][]): string {
 export interface LinhaDeRankingParaExportar {
   nome: string;
   totalPontos: number;
+  totalAlmas: number;
 }
 
-/** Ranking de Pontuação completo da Temporada, do 1º ao último. */
+/** Ranking de Pontuação completo da Temporada, como tabela (bloco monoespaçado), do 1º ao último. */
 export function formatarMensagemRankingGeral(
   ranking: LinhaDeRankingParaExportar[],
   temporadaDesde: string,
 ): string {
-  const linhas = ranking.map(
-    (entrada, indice) => `${formatarPosicao(indice)} ${entrada.nome} — ${entrada.totalPontos} pts`,
+  const lider = ranking[0];
+
+  const tabela = montarTabela(
+    [
+      { titulo: "Pos" },
+      { titulo: "Jogador" },
+      { titulo: "Pts", alinhamento: "direita" },
+      { titulo: "Almas", alinhamento: "direita" },
+    ],
+    ranking.map((entrada, indice) => [
+      formatarPosicao(indice),
+      entrada.nome,
+      String(entrada.totalPontos),
+      String(entrada.totalAlmas),
+    ]),
   );
 
   return [
     `🏆 *Ranking da Temporada* (desde ${temporadaDesde})`,
+    ...(lider ? [`🥇 Líder: *${lider.nome}*`] : []),
     "",
-    ...linhas,
+    tabela,
     "",
     "_Poker dos Amigos_",
   ].join("\n");
@@ -110,7 +124,7 @@ export function formatarMensagemResultadoPartida(
       { titulo: "Eliminado por" },
     ],
     ordenados.map((l, indice) => [
-      formatarPosicaoDeTabela(indice),
+      formatarPosicao(indice),
       l.nome,
       String(l.pontos ?? "—"),
       l.eliminadoPorNome ?? "—",

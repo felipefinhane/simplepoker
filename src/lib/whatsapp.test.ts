@@ -6,22 +6,33 @@ import {
 } from "./whatsapp";
 
 describe("formatarMensagemRankingGeral", () => {
-  it("numera com medalhas nos 3 primeiros e número a partir do 4º", () => {
+  it("monta uma tabela (bloco monoespaçado) na ordem recebida, com Pontos e Almas", () => {
     const texto = formatarMensagemRankingGeral(
       [
-        { nome: "Fulano", totalPontos: 46 },
-        { nome: "Beto", totalPontos: 45 },
-        { nome: "Caio", totalPontos: 40 },
-        { nome: "Dedé", totalPontos: 30 },
+        { nome: "Fulano", totalPontos: 46, totalAlmas: 3 },
+        { nome: "Beto", totalPontos: 45, totalAlmas: 4 },
+        { nome: "Caio", totalPontos: 40, totalAlmas: 2 },
+        { nome: "Dedé", totalPontos: 30, totalAlmas: 1 },
       ],
       "03/02/2026",
     );
 
-    expect(texto).toContain("🥇 Fulano — 46 pts");
-    expect(texto).toContain("🥈 Beto — 45 pts");
-    expect(texto).toContain("🥉 Caio — 40 pts");
-    expect(texto).toContain("4º Dedé — 30 pts");
+    expect(texto).toContain("```");
+    expect(texto).toMatch(/Pos\s+Jogador\s+Pts\s+Almas/);
+    // Ordem preservada (quem chama já manda ordenado — é a saída de `calcularRankingDePontuacao`).
+    const indices = ["Fulano", "Beto", "Caio", "Dedé"].map((nome) => texto.indexOf(nome));
+    expect(indices).toEqual([...indices].sort((a, b) => a - b));
+    // Linha do Beto tem os números certos de Pontos e Almas.
+    const linhaDoBeto = texto.split("\n").find((linha) => linha.includes("Beto"));
+    expect(linhaDoBeto).toMatch(/45.*4/);
     expect(texto).toContain("*Ranking da Temporada* (desde 03/02/2026)");
+    expect(texto).toContain("🥇 Líder: *Fulano*");
+  });
+
+  it("não quebra com ranking vazio", () => {
+    const texto = formatarMensagemRankingGeral([], "03/02/2026");
+    expect(texto).not.toContain("🥇 Líder:");
+    expect(texto).toContain("```");
   });
 });
 
