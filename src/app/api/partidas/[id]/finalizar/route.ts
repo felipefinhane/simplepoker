@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOrganizadorOuResposta } from "@/lib/auth/organizador";
 import { finalizarPartida, respostaDeErroDaPartida } from "@/lib/partidas";
+import { encerrarTimer } from "@/lib/timer";
 
 export async function POST(
   _request: Request,
@@ -17,6 +18,16 @@ export async function POST(
 
   try {
     const resultado = await finalizarPartida(partidaId, organizadorOuResposta.id);
+
+    // Best-effort: finalizar a Partida já valeu, mesmo que isso falhe —
+    // não deixa o Timer rodando de verdade pra ninguém (só a exibição
+    // "encerrado" fica desatualizada até uma nova tentativa).
+    try {
+      await encerrarTimer(partidaId);
+    } catch (error) {
+      console.error("Falha ao encerrar o Timer junto com a Partida", error);
+    }
+
     return NextResponse.json(resultado);
   } catch (error) {
     const resposta = respostaDeErroDaPartida(error);

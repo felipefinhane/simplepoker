@@ -15,6 +15,7 @@ import {
 } from "@/lib/temporadas";
 import { listarJogadoresAtivos } from "@/lib/jogadores";
 import { registrarEvento } from "@/lib/auditoria";
+import { notificarJogadorSaiu, notificarPartidaTerminou } from "@/lib/push";
 
 /** Ver CONTEXT.md — Partida exige no mínimo 5 participantes. */
 export const MINIMO_DE_PARTICIPANTES = 5;
@@ -544,7 +545,21 @@ export async function marcarSaida(
     });
   });
 
-  return (await buscarPartidaPorId(partidaId))!;
+  const partida = (await buscarPartidaPorId(partidaId))!;
+
+  // Fora da transação (chamada de rede) — mesmo motivo de
+  // `notificarMudancaDeNivel` (src/lib/push.ts): não pode segurar lock
+  // nem falhar a saída do Jogador se o envio falhar. Nome/posição vêm do
+  // Lançamento já recarregado acima (`travarPartidaEditavel` não traz
+  // `nome`, é só a trava).
+  const lancamentoAtualizado = partida.lancamentos.find((l) => l.jogadorId === jogadorId);
+  if (lancamentoAtualizado?.posicao != null) {
+    notificarJogadorSaiu(partidaId, lancamentoAtualizado.nome, lancamentoAtualizado.posicao).catch(
+      (error) => console.error("Falha ao notificar saída do Jogador", error),
+    );
+  }
+
+  return partida;
 }
 
 export interface PartidaFinalizada {
@@ -611,6 +626,16 @@ export async function finalizarPartida(
   });
 
   const partida = (await buscarPartidaPorId(partidaId))!;
+
+  // Fora da transação (chamada de rede) — mesmo motivo de
+  // `notificarMudancaDeNivel` (src/lib/push.ts). O Timer em si é encerrado
+  // pela rota (`api/partidas/[id]/finalizar/route.ts`, ticket 48) — não
+  // aqui, pra não criar um import circular (`timer.ts` já importa deste
+  // arquivo).
+  notificarPartidaTerminou(
+    partidaId,
+    partida.lancamentos.map((l) => ({ nome: l.nome, posicao: l.posicao, pontos: l.pontos })),
+  ).catch((error) => console.error("Falha ao notificar término da Partida", error));
 
   return { partida, premiacao, entradaNoCaixa };
 }

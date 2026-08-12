@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import { db, withTransaction } from "@/lib/db";
 import { buscarPartidaPorId } from "@/lib/partidas";
 import { TemporadaEncerradaError, buscarTemporadaPorId } from "@/lib/temporadas";
-import { notificarMudancaDeNivel } from "@/lib/push";
+import { notificarMudancaDeNivel, notificarPartidaComecou } from "@/lib/push";
 import type { NivelDeBlind } from "@/domain/types";
 
 /** Estado do Timer de blinds de uma Partida. Ver CONTEXT.md (Timer). */
@@ -277,8 +277,19 @@ export async function iniciarTimer(partidaId: number): Promise<EstadoDoTimer> {
   if (!contexto) throw new Error(`Partida ${partidaId} não encontrada.`);
   if (contexto.estruturaDeBlinds.length === 0) throw new SemEstruturaDeBlindsError();
 
+  let primeiroInicio = false;
+
   await withTransaction(async (client) => {
     await travarTemporadaEControleDoTimer(client, partidaId, contexto.temporadaId);
+
+    // Se não existe linha ainda, este é o primeiro "Iniciar" de verdade
+    // desta Partida — é só nesse caso que "Partida começou" (ticket 48)
+    // dispara, não em cada retomada depois de uma pausa.
+    const { rows: existentes } = await client.query(
+      `SELECT 1 FROM timers_de_partida WHERE partida_id = $1`,
+      [partidaId],
+    );
+    primeiroInicio = existentes.length === 0;
 
     await client.query(
       `INSERT INTO timers_de_partida (partida_id, nivel, rodando, inicio_do_nivel, segundos_decorridos)
@@ -289,6 +300,15 @@ export async function iniciarTimer(partidaId: number): Promise<EstadoDoTimer> {
       [partidaId],
     );
   });
+
+  // Fora da transação (chamada de rede) — mesmo motivo de
+  // `notificarMudancaDeNivel`: não deve segurar lock nem falhar o início
+  // do Timer se o envio falhar.
+  if (primeiroInicio) {
+    notificarPartidaComecou(partidaId).catch((error) =>
+      console.error("Falha ao notificar início da Partida", error),
+    );
+  }
 
   return (await buscarEstadoDoTimer(partidaId))!;
 }

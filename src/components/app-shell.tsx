@@ -108,70 +108,84 @@ export function AppShell({
           </span>
         </Link>
 
-        {organizador ? (
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuAberto((atual) => !atual)}
-              aria-label="Conta"
+        <div className="flex items-center gap-1">
+          {/* Preferências do dispositivo (notificação global, modo
+              daltonismo — tickets 48/53/54): próprio ícone, fora do menu
+              de conta abaixo, porque esse menu só existe pro Organizador
+              logado e essas preferências são de qualquer visitante. */}
+          <Link
+            href="/configuracoes"
+            aria-label="Configurações"
+            className="flex h-touch-target-min w-touch-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          >
+            <span className="material-symbols-outlined text-[24px]">settings</span>
+          </Link>
+
+          {organizador ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuAberto((atual) => !atual)}
+                aria-label="Conta"
+                className="flex h-touch-target-min w-touch-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+              >
+                <span className="material-symbols-outlined text-[24px]">account_circle</span>
+              </button>
+
+              {menuAberto && (
+                <>
+                  {/* Fecha o menu ao clicar fora — não é um controle de
+                      verdade, só captura o clique fora do menu. */}
+                  <div
+                    className="fixed inset-0 z-40 cursor-default"
+                    onClick={() => setMenuAberto(false)}
+                  />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-outline-variant bg-surface-container-high py-2 shadow-lg">
+                    <p className="px-4 py-2 text-label-sm text-on-surface-variant">
+                      Olá, {organizador.nome}
+                    </p>
+                    <Link
+                      href="/jogadores"
+                      onClick={() => setMenuAberto(false)}
+                      className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
+                    >
+                      Jogadores
+                    </Link>
+                    <Link
+                      href="/temporadas"
+                      onClick={() => setMenuAberto(false)}
+                      className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
+                    >
+                      Temporada
+                    </Link>
+                    <Link
+                      href="/conta/trocar-senha"
+                      onClick={() => setMenuAberto(false)}
+                      className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
+                    >
+                      Trocar senha
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={sair}
+                      className="block w-full px-4 py-2 text-left text-body-md text-error hover:bg-surface-container-highest"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              aria-label="Entrar como Organizador"
               className="flex h-touch-target-min w-touch-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
             >
               <span className="material-symbols-outlined text-[24px]">account_circle</span>
-            </button>
-
-            {menuAberto && (
-              <>
-                {/* Fecha o menu ao clicar fora — não é um controle de
-                    verdade, só captura o clique fora do menu. */}
-                <div
-                  className="fixed inset-0 z-40 cursor-default"
-                  onClick={() => setMenuAberto(false)}
-                />
-                <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-outline-variant bg-surface-container-high py-2 shadow-lg">
-                  <p className="px-4 py-2 text-label-sm text-on-surface-variant">
-                    Olá, {organizador.nome}
-                  </p>
-                  <Link
-                    href="/jogadores"
-                    onClick={() => setMenuAberto(false)}
-                    className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
-                  >
-                    Jogadores
-                  </Link>
-                  <Link
-                    href="/temporadas"
-                    onClick={() => setMenuAberto(false)}
-                    className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
-                  >
-                    Temporada
-                  </Link>
-                  <Link
-                    href="/conta/trocar-senha"
-                    onClick={() => setMenuAberto(false)}
-                    className="block px-4 py-2 text-body-md text-on-surface hover:bg-surface-container-highest"
-                  >
-                    Trocar senha
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={sair}
-                    className="block w-full px-4 py-2 text-left text-body-md text-error hover:bg-surface-container-highest"
-                  >
-                    Sair
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            aria-label="Entrar como Organizador"
-            className="flex h-touch-target-min w-touch-target-min items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
-          >
-            <span className="material-symbols-outlined text-[24px]">account_circle</span>
-          </Link>
-        )}
+            </Link>
+          )}
+        </div>
       </header>
 
       <aside className="sticky top-14 hidden h-[calc(100vh-56px)] flex-col gap-2 border-r border-surface-container-high bg-surface p-4 md:flex">

@@ -60,14 +60,26 @@ function detectarSuporte(): SuporteDeNotificacao {
   return "suportado";
 }
 
+/** Endpoint de inscrição: contextual (dessa Partida) ou global (qualquer Partida, ticket 48). */
+function urlDeInscricao(partidaId: number | null): string {
+  return partidaId === null
+    ? "/api/notificacoes/inscricao"
+    : `/api/partidas/${partidaId}/timer/notificacoes`;
+}
+
 /**
- * Ativar/desativar notificação push de troca de nível pra uma Partida —
- * reaproveitado pelo card compacto e pela tela cheia do Timer. Suporte
- * varia bastante por navegador/OS (ver `SuporteDeNotificacao`), então o
- * componente que usa isso sempre precisa checar `suporte` antes de mostrar
- * o botão.
+ * Ativar/desativar notificação push — dois usos:
+ * - **Contextual** (`partidaId` de verdade): troca de nível de blind
+ *   dessa Partida — reaproveitado pelo card compacto e pela tela cheia do
+ *   Timer (ticket 39).
+ * - **Global** (`partidaId: null`): partida começou/terminou/jogador saiu
+ *   de qualquer Partida — usado na tela de Configurações (ticket 48/54).
+ *
+ * Suporte varia bastante por navegador/OS (ver `SuporteDeNotificacao`),
+ * então o componente que usa isso sempre precisa checar `suporte` antes de
+ * mostrar o botão.
  */
-export function useNotificacoesDoTimer(partidaId: number) {
+export function useNotificacoesPush(partidaId: number | null) {
   // `useSyncExternalStore` (não `useEffect` + `setState`) porque é um
   // valor de fora do React (capacidade do navegador) que nunca muda depois
   // de montado — `getServerSnapshot` mantém a SSR segura ("verificando",
@@ -117,12 +129,18 @@ export function useNotificacoesDoTimer(partidaId: number) {
         return;
       }
 
+      // `subscribe()` é idempotente: se o navegador já tem uma inscrição
+      // ativa pra essa `applicationServerKey` (ex: já ativou a
+      // notificação contextual de outra Partida, ou a global), devolve a
+      // mesma sem recriar — é assim que a mesma `endpoint` acaba servindo
+      // tanto pra inscrição contextual quanto pra global (ver dedupe em
+      // `buscarInscricoesDaPartida`, `src/lib/push.ts`).
       const assinatura = await registro.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: base64UrlParaUint8Array(CHAVE_PUBLICA_VAPID),
       });
 
-      const resposta = await fetch(`/api/partidas/${partidaId}/timer/notificacoes`, {
+      const resposta = await fetch(urlDeInscricao(partidaId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(assinatura.toJSON()),
@@ -143,12 +161,18 @@ export function useNotificacoesDoTimer(partidaId: number) {
       const registro = await navigator.serviceWorker.ready;
       const assinatura = await registro.pushManager.getSubscription();
       if (assinatura) {
-        await fetch(`/api/partidas/${partidaId}/timer/notificacoes`, {
+        await fetch(urlDeInscricao(partidaId), {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint: assinatura.endpoint }),
         });
-        await assinatura.unsubscribe();
+        // Propositalmente **não** chama `assinatura.unsubscribe()`: isso
+        // derrubaria o endpoint inteiro no navegador, que agora pode estar
+        // servindo dois níveis ao mesmo tempo (contextual e global, ver
+        // ticket 48) — desativar um não pode matar o outro. Só apaga a
+        // linha deste nível no servidor; a inscrição do navegador em si
+        // fica pronta pra ser reaproveitada (`subscribe()` é idempotente,
+        // ver `ativar()`).
       }
       setInscrito(false);
     } catch {

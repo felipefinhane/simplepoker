@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IconeCarregando } from "@/components/icone-carregando";
-import { useNotificacoesDoTimer } from "./use-notificacoes-do-timer";
+import { useNotificacoesPush } from "@/hooks/use-notificacoes-push";
 
 /**
  * Ativa/desativa notificação push de troca de nível — em cima do beep
@@ -21,7 +21,7 @@ export function BotaoNotificacao({
   sobreFundoEscuro?: boolean;
   className?: string;
 }) {
-  const { suporte, inscrito, carregando, erro, alternar } = useNotificacoesDoTimer(partidaId);
+  const { suporte, inscrito, carregando, erro, alternar } = useNotificacoesPush(partidaId);
   // `title` não aparece em toque no celular (sem hover) — a dica "instale
   // o app primeiro" (iOS) usa esse popover pra ficar visível de verdade.
   const [mostrarDicaIos, setMostrarDicaIos] = useState(false);
@@ -61,7 +61,13 @@ export function BotaoNotificacao({
         disabled={carregando}
         aria-label={inscrito ? "Desativar notificação de blind" : "Ativar notificação de blind"}
         className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-          inscrito ? "bg-secondary/20 text-secondary" : corInativa
+          // Preenchimento sólido em `primary` — mesma cor usada pro estado
+          // "ligado" do toggle de Jogador ativo (ver
+          // modal-gerenciar-jogadores.tsx) — em vez do tom translúcido de
+          // `secondary` (dourado, usado em botões/valores por todo o app,
+          // difícil de ler como "isso está ativado" à primeira vista;
+          // ticket 49).
+          inscrito ? "bg-primary text-on-primary" : corInativa
         }`}
       >
         {carregando ? (

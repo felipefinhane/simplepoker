@@ -107,6 +107,39 @@
   --text-label-data--font-weight: 500;
 }
 
+/*
+ * Modo daltonismo (ticket 53) — paleta alternativa pras famílias `primary`
+ * (verde, usado tanto como cor de marca quanto como "positivo"/"entrada"
+ * no Caixa) e `error` (usado como "negativo"/"saída"): o par verde/vermelho
+ * é justamente o mais difícil pra quem tem deuteranopia/protanopia (a
+ * forma mais comum de daltonismo). Troca pra azul/laranja, um par com
+ * contraste de matiz bem mais distinguível pra quem tem esse tipo de
+ * daltonismo. `secondary`/`tertiary` não mudam — não formam um par
+ * semântico "bom/ruim" em lugar nenhum do app, são só acento.
+ *
+ * Ligado via `html[data-daltonismo="true"]`, setado por um script inline
+ * no `<head>` (ver layout.tsx — evita flash da paleta errada antes do
+ * React hidratar) e alternado ao vivo por `ToggleDaltonismo`
+ * (src/app/configuracoes/toggle-daltonismo.tsx), sempre em `localStorage`.
+ */
+html[data-daltonismo="true"] {
+  --color-primary: #7ec8f2;
+  --color-on-primary: #003546;
+  --color-primary-container: #0d5470;
+  --color-on-primary-container: #a8dcfa;
+  --color-primary-fixed: #cae8fc;
+  --color-primary-fixed-dim: #7ec8f2;
+  --color-on-primary-fixed: #001f2b;
+  --color-on-primary-fixed-variant: #0d5470;
+  --color-inverse-primary: #2a6d8f;
+  --color-surface-tint: #7ec8f2;
+
+  --color-error: #ffb870;
+  --color-on-error: #4a2800;
+  --color-error-container: #7a4400;
+  --color-on-error-container: #ffdcb8;
+}
+
 /* Utilities usadas em várias telas — ver stitch-output-raw.html. */
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 20px);

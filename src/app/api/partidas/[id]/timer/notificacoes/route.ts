@@ -1,25 +1,15 @@
 import { NextResponse } from "next/server";
 import { buscarEstadoDoTimer } from "@/lib/timer";
-import { salvarInscricao, removerInscricao, type AssinaturaPush } from "@/lib/push";
+import { salvarInscricao, removerInscricao, ehAssinaturaValida } from "@/lib/push";
 
 /**
  * Inscrição/cancelamento de notificação push do Timer de uma Partida —
  * público (igual ao GET do Timer, ticket 14): qualquer visitante pode
  * ativar "avisar quando o blind mudar" no próprio dispositivo, não só o
- * Organizador. Ver `notificarMudancaDeNivel` em `src/lib/push.ts`.
+ * Organizador. Ver `notificarMudancaDeNivel` em `src/lib/push.ts`. Essa é a
+ * inscrição **contextual**; a global (partida começou/terminou/jogador
+ * saiu de qualquer Partida) é `/api/notificacoes/inscricao` (ticket 48).
  */
-
-function ehAssinaturaValida(corpo: unknown): corpo is AssinaturaPush {
-  if (!corpo || typeof corpo !== "object") return false;
-  const assinatura = corpo as Partial<AssinaturaPush>;
-  return (
-    typeof assinatura.endpoint === "string" &&
-    typeof assinatura.keys === "object" &&
-    assinatura.keys !== null &&
-    typeof assinatura.keys.p256dh === "string" &&
-    typeof assinatura.keys.auth === "string"
-  );
-}
 
 export async function POST(
   request: Request,
