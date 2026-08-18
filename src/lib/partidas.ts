@@ -388,6 +388,53 @@ export async function adicionarParticipante(
   return (await buscarPartidaPorId(partidaId))!;
 }
 
+/**
+ * Remove um Jogador da lista de participantes de uma Partida ainda não
+ * finalizada — pro caso do Organizador ter selecionado alguém que no fim
+ * não vai jogar (ver CONTEXT.md — Partida). Só permite remover um
+ * Lançamento ainda "vazio": sem Posição, sem Eliminador e sem ter
+ * eliminado ninguém — se já carrega resultado de verdade, o jeito certo
+ * de tirar alguém da Partida é marcar "Saiu" (ou usar "Desfazer" antes),
+ * não apagar o registro. Mantém o mínimo de participantes da Partida.
+ *
+ * Sem `atorId`: a linha some, não sobra onde gravar "quem removeu" — e,
+ * assim como `adicionarParticipante`, é uma ação de alta frequência e
+ * baixo valor de auditoria (ver o comentário em `AcaoDeAuditoria`).
+ */
+export async function removerParticipante(
+  partidaId: number,
+  jogadorId: number,
+): Promise<Partida> {
+  await withTransaction(async (client) => {
+    const { lancamentos } = await travarPartidaEditavel(client, partidaId);
+
+    const lancamento = lancamentos.find((l) => l.jogadorId === jogadorId);
+    if (!lancamento) {
+      throw new DadosDaPartidaInvalidosError("Jogador não é participante desta Partida.");
+    }
+    if (lancamento.posicao !== null || lancamento.eliminadoPorJogadorId !== null) {
+      throw new DadosDaPartidaInvalidosError(
+        "Este participante já tem resultado lançado — desfaça antes de remover.",
+      );
+    }
+    if (lancamentos.some((l) => l.eliminadoPorJogadorId === jogadorId)) {
+      throw new DadosDaPartidaInvalidosError(
+        "Este participante já eliminou alguém nesta Partida e não pode ser removido.",
+      );
+    }
+    if (lancamentos.length - 1 < MINIMO_DE_PARTICIPANTES) {
+      throw new MinimoDeParticipantesError();
+    }
+
+    await client.query(
+      `DELETE FROM lancamentos WHERE partida_id = $1 AND jogador_id = $2`,
+      [partidaId, jogadorId],
+    );
+  });
+
+  return (await buscarPartidaPorId(partidaId))!;
+}
+
 function validarEliminador(
   lancamentos: { jogadorId: number; posicao: number | null }[],
   jogadorId: number,

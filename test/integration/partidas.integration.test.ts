@@ -20,6 +20,7 @@ import {
   editarDataDaPartida,
   finalizarPartida,
   marcarSaida,
+  removerParticipante,
 } from "@/lib/partidas";
 
 const PARAMETROS_DE_TESTE = {
@@ -155,6 +156,72 @@ describe("adicionarParticipante (contra Postgres real)", () => {
 
     await expect(adicionarParticipante(partida.id, jogadorIds[5], null)).rejects.toThrow(
       JogadorInvalidoError,
+    );
+  });
+});
+
+describe("removerParticipante (contra Postgres real)", () => {
+  it("remove um participante ainda ativo, sem resultado lançado", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds, null); // 6 participantes
+
+    const atualizada = await removerParticipante(partida.id, jogadorIds[5]);
+
+    expect(atualizada.lancamentos).toHaveLength(5);
+    expect(atualizada.lancamentos.some((l) => l.jogadorId === jogadorIds[5])).toBe(false);
+  });
+
+  it("recusa remover quem não é participante desta Partida", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
+
+    await expect(removerParticipante(partida.id, jogadorIds[5])).rejects.toThrow(
+      DadosDaPartidaInvalidosError,
+    );
+  });
+
+  it("recusa remover quem já tem posição registrada (já saiu)", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const [a, b, c, d, e, f] = jogadorIds;
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e, f], null);
+    await marcarSaida(partida.id, f, a, null);
+
+    await expect(removerParticipante(partida.id, f)).rejects.toThrow(
+      DadosDaPartidaInvalidosError,
+    );
+  });
+
+  it("recusa remover quem já eliminou alguém, mesmo ainda ativo", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const [a, b, c, d, e, f] = jogadorIds;
+    const partida = await criarPartida("2026-01-10", [a, b, c, d, e, f], null);
+    await marcarSaida(partida.id, f, a, null); // a elimina f, a continua ativo
+
+    await expect(removerParticipante(partida.id, a)).rejects.toThrow(
+      DadosDaPartidaInvalidosError,
+    );
+  });
+
+  it("recusa remover se ficaria abaixo do mínimo de participantes", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const partida = await criarPartida("2026-01-10", jogadorIds.slice(0, 5), null);
+
+    await expect(removerParticipante(partida.id, jogadorIds[0])).rejects.toThrow(
+      MinimoDeParticipantesError,
+    );
+  });
+
+  it("recusa remover de uma Partida já finalizada", async () => {
+    await criarTemporada(PARAMETROS_DE_TESTE, null);
+    const participantes = jogadorIds.slice(0, 5);
+    const partida = await criarPartida("2026-01-10", participantes, null);
+    for (const id of participantes.slice(0, 4)) {
+      await marcarSaida(partida.id, id, null, null);
+    }
+    await finalizarPartida(partida.id, null);
+
+    await expect(removerParticipante(partida.id, participantes[4])).rejects.toThrow(
+      PartidaFinalizadaError,
     );
   });
 });

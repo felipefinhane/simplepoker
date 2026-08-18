@@ -34,6 +34,11 @@ function inicial(nome: string): string {
   return nome.trim().charAt(0).toUpperCase();
 }
 
+/** Espelha `MINIMO_DE_PARTICIPANTES` de `@/lib/partidas` — mesmo padrão de
+ * `nova-partida-client.tsx` (evita puxar código de servidor pro bundle do
+ * cliente só por causa de uma constante). */
+const MINIMO_DE_PARTICIPANTES = 5;
+
 /**
  * O Lançamento de um Jogador nesta Partida — mostra o estado rápido
  * (Ativo/Saiu, Pagou, Almas, Pontos) com dois jeitos de registrar o
@@ -49,6 +54,8 @@ function LinhaDeLancamento({
   salvando,
   onAtualizar,
   onSair,
+  onRemover,
+  naoRemovivelPorque,
   projecao,
 }: {
   lancamento: LancamentoDaPartida;
@@ -56,10 +63,14 @@ function LinhaDeLancamento({
   ativos: LancamentoDaPartida[];
   /** Todo mundo — o editor manual aceita qualquer Jogador como eliminador. */
   todos: LancamentoDaPartida[];
-  /** Essa linha tem um PATCH em andamento (ver `salvandoJogadorId` no pai). */
+  /** Essa linha tem um PATCH/DELETE em andamento (ver `salvandoJogadorId` no pai). */
   salvando: boolean;
   onAtualizar: (jogadorId: number, dados: AtualizacaoDeLancamento) => Promise<void>;
   onSair: (jogadorId: number, eliminadoPorJogadorId: number | null) => Promise<void>;
+  onRemover: (jogadorId: number) => Promise<void>;
+  /** `null` = pode remover; senão, o motivo do bloqueio (mostrado no
+   * `title` do botão) — já eliminou alguém, ou cairia abaixo do mínimo. */
+  naoRemovivelPorque: string | null;
   /** Ticket 50 — só existe pra quem já saiu (tem Posição definida). */
   projecao?: ProjecaoDeRanking;
 }) {
@@ -155,6 +166,23 @@ function LinhaDeLancamento({
                 <span className="material-symbols-outlined text-[16px]">undo</span>
               )}
               Desfazer
+            </button>
+          )}
+
+          {estaAtivo && !saindo && (
+            <button
+              type="button"
+              disabled={salvando || naoRemovivelPorque !== null}
+              title={naoRemovivelPorque ?? undefined}
+              aria-label={`Remover ${lancamento.nome} da Partida`}
+              onClick={() => {
+                if (confirm(`Remover ${lancamento.nome} desta Partida? Ele não vai jogar.`)) {
+                  onRemover(lancamento.jogadorId);
+                }
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-error-container/40 hover:text-error disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-on-surface-variant"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_remove</span>
             </button>
           )}
 
@@ -403,6 +431,25 @@ export function PartidaEmAndamentoClient({
     }
   }
 
+  async function removerLinha(jogadorId: number) {
+    setSalvandoJogadorId(jogadorId);
+    try {
+      const removido = partida.lancamentos.find((l) => l.jogadorId === jogadorId);
+      const corpo = await executar(
+        `/api/partidas/${partida.id}/participantes/${jogadorId}`,
+        "DELETE",
+      );
+      if (corpo) {
+        setPartida(corpo.partida as Partida);
+        // Removido volta a aparecer no seletor "Adicionar Jogador" — mesma
+        // lista de quem tá de fora da Partida.
+        if (removido) setFora((atual) => [...atual, { id: removido.jogadorId, nome: removido.nome }]);
+      }
+    } finally {
+      setSalvandoJogadorId(null);
+    }
+  }
+
   async function marcarSaida(jogadorId: number, eliminadoPorJogadorId: number | null) {
     setSalvandoJogadorId(jogadorId);
     try {
@@ -501,6 +548,14 @@ export function PartidaEmAndamentoClient({
             salvando={salvandoJogadorId === lancamento.jogadorId}
             onAtualizar={atualizarLinha}
             onSair={marcarSaida}
+            onRemover={removerLinha}
+            naoRemovivelPorque={
+              lancamento.almas > 0
+                ? "Já eliminou alguém nesta Partida — não pode ser removido."
+                : partida.lancamentos.length <= MINIMO_DE_PARTICIPANTES
+                  ? `Mínimo de ${MINIMO_DE_PARTICIPANTES} participantes.`
+                  : null
+            }
             projecao={projecoes[lancamento.jogadorId]}
           />
         ))}
